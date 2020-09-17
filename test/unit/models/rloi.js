@@ -43,20 +43,15 @@ const valuesSchemaQueryMatcher = sinon.match((matchValue) => {
 }, 'Values query does not match expected schema')
 
 function getMockedDbHelper () {
-  const stub = sinon.createStubInstance(Db)
-  // the query1 method has been introduced into the model and should not be needed
-  // it should be possible to have multiple withArgs and resolves statements
-  // but this is not currently working in that all calls match the two arg
-  // signature even when they ony have one arg.
-  // Having a seperate method sidesteps this problem
-  // Haven't got to the bottom of this yet
-  stub.query1 = sinon.stub()
+  const db = sinon.createStubInstance(Db)
+  // Note: using the sinon.createStubInstance(MyConstructor, overrides) form didn't work for some reason
+  // hence using this slightly less terse form
+  db.query
     .withArgs(valuesSchemaQueryMatcher)
     .resolves()
-  stub.query = sinon.stub()
     .withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher)
     .resolves({ rows: [{ telemetry_value_parent_id: 1 }] })
-  return stub
+  return db
 }
 
 lab.experiment('rloi model', () => {
@@ -126,7 +121,7 @@ lab.experiment('rloi model', () => {
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
     sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 20)
-    sinon.assert.callCount(db.query1.withArgs(valuesSchemaQueryMatcher), 20)
+    sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 20)
   })
 
   lab.test('RLOI process empty values', async () => {
