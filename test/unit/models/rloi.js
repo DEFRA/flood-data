@@ -57,6 +57,8 @@ function getMockedDbHelper () {
 lab.experiment('rloi model', () => {
   lab.afterEach(() => {
     sinon.verify()
+    // Restore after each test is Sinon best practice at time of wrting
+    // https://sinonjs.org/releases/v9.0.3/general-setup/
     sinon.restore()
   })
 
