@@ -15,6 +15,10 @@ const station2 = require('../../data/station2.json')
 const coastalStation = require('../../data/station-coastal.json')
 const sinon = require('sinon')
 
+function clone (a) {
+  return JSON.parse(JSON.stringify(a))
+}
+
 function getStubbedS3Helper () {
   return sinon.createStubInstance(S3)
 }
@@ -177,7 +181,7 @@ lab.experiment('rloi model', () => {
     sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 20)
   })
 
-  lab.test('negative processed values should be errors', async () => {
+  lab.test('negative processed values should not be errors', async () => {
     const file = require('../../data/rloi-test-single.json')
     const s3 = getStubbedS3HelperGetObject(station)
     const db = getMockedDbHelper()
@@ -189,9 +193,9 @@ lab.experiment('rloi model', () => {
       values: [
         1,
         1.986,
-        null,
+        -0.014,
         '2018-06-29T11:00:00.000Z',
-        true
+        false
       ]
     }
     sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
