@@ -117,7 +117,7 @@ lab.experiment('rloi model', () => {
   lab.test('RLOI process', async () => {
     const db = getMockedDbHelper()
     const s3 = getStubbedS3HelperGetObject(station)
-    const file = await util.parseXml(fs.readFileSync('./test/data/rloi-test.xml'))
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
     sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 20)
@@ -127,7 +127,7 @@ lab.experiment('rloi model', () => {
   lab.test('RLOI process empty values', async () => {
     const db = getMockedDbHelper()
     const s3 = getStubbedS3HelperGetObject(station)
-    const file = await util.parseXml(fs.readFileSync('./test/data/rloi-empty.xml'))
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-empty.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
   })
@@ -135,7 +135,7 @@ lab.experiment('rloi model', () => {
   lab.test('RLOI process no station', async () => {
     const s3 = getStubbedS3Helper()
     const db = getMockedDbHelper()
-    const file = await util.parseXml(fs.readFileSync('./test/data/rloi-test.xml'))
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
   })
@@ -143,7 +143,7 @@ lab.experiment('rloi model', () => {
   lab.test('RLOI process no station', async () => {
     const s3 = getStubbedS3HelperGetObject(station2)
     const db = getMockedDbHelper()
-    const file = await util.parseXml(fs.readFileSync('./test/data/rloi-test.xml'))
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
   })
@@ -151,7 +151,7 @@ lab.experiment('rloi model', () => {
   lab.test('RLOI process no station', async () => {
     const s3 = getStubbedS3HelperGetObject(coastalStation)
     const db = getMockedDbHelper()
-    const file = await util.parseXml(fs.readFileSync('./test/data/rloi-test.xml'))
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
   })
