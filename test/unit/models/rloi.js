@@ -181,6 +181,28 @@ lab.experiment('rloi model', () => {
     sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 20)
   })
 
+  lab.test('subtract values should be applied', async () => {
+    const file = require('../../data/rloi-test-single.json')
+    const stationClone = clone(station)
+    stationClone.Subtract = 0.5
+
+    const s3 = getStubbedS3HelperGetObject(stationClone)
+    const db = getMockedDbHelper()
+    const rloi = new Rloi(db, s3, util)
+    await rloi.save(file, 's3://devlfw', 'testkey')
+    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
+    const expectedQuery = {
+      text: 'INSERT INTO "sls_telemetry_value" ("telemetry_value_parent_id", "value", "processed_value", "value_timestamp", "error") VALUES ($1, $2, $3, $4, $5)',
+      values: [
+        1,
+        1.986,
+        1.486,
+        '2018-06-29T11:00:00.000Z',
+        false
+      ]
+    }
+    sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
+  })
   lab.test('negative processed values should not be errors', async () => {
     const file = require('../../data/rloi-test-single.json')
     const s3 = getStubbedS3HelperGetObject(station)
@@ -241,6 +263,29 @@ lab.experiment('rloi model', () => {
         null,
         '2018-06-29T11:00:00.000Z',
         true
+      ]
+    }
+    sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
+  })
+
+  lab.test('empty subtract values should be ignored', async () => {
+    const file = require('../../data/rloi-test-single.json')
+    const stationClone = clone(station)
+    stationClone.Subtract = ''
+
+    const s3 = getStubbedS3HelperGetObject(stationClone)
+    const db = getMockedDbHelper()
+    const rloi = new Rloi(db, s3, util)
+    await rloi.save(file, 's3://devlfw', 'testkey')
+    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
+    const expectedQuery = {
+      text: 'INSERT INTO "sls_telemetry_value" ("telemetry_value_parent_id", "value", "processed_value", "value_timestamp", "error") VALUES ($1, $2, $3, $4, $5)',
+      values: [
+        1,
+        1.986,
+        1.986,
+        '2018-06-29T11:00:00.000Z',
+        false
       ]
     }
     sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
