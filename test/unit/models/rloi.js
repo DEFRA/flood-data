@@ -200,4 +200,49 @@ lab.experiment('rloi model', () => {
     }
     sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
   })
+
+  lab.test('non-numeric values should be flagged as an error', async () => {
+    const file = clone(require('../../data/rloi-test-single.json'))
+    file.EATimeSeriesDataExchangeFormat.Station[0].SetofValues[0].Value[0]._ = 'blah'
+
+    const s3 = getStubbedS3HelperGetObject(station)
+    const db = getMockedDbHelper()
+    const rloi = new Rloi(db, s3, util)
+    await rloi.save(file, 's3://devlfw', 'testkey')
+    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
+    const expectedQuery = {
+      text: 'INSERT INTO "sls_telemetry_value" ("telemetry_value_parent_id", "value", "processed_value", "value_timestamp", "error") VALUES ($1, $2, $3, $4, $5)',
+      values: [
+        1,
+        NaN,
+        null,
+        '2018-06-29T11:00:00.000Z',
+        true
+      ]
+    }
+    sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
+  })
+
+  lab.test('non-numeric subtract values should be be flagged as an error', async () => {
+    const file = require('../../data/rloi-test-single.json')
+    const stationClone = clone(station)
+    stationClone.Subtract = 'blah'
+
+    const s3 = getStubbedS3HelperGetObject(stationClone)
+    const db = getMockedDbHelper()
+    const rloi = new Rloi(db, s3, util)
+    await rloi.save(file, 's3://devlfw', 'testkey')
+    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
+    const expectedQuery = {
+      text: 'INSERT INTO "sls_telemetry_value" ("telemetry_value_parent_id", "value", "processed_value", "value_timestamp", "error") VALUES ($1, $2, $3, $4, $5)',
+      values: [
+        1,
+        1.986,
+        null,
+        '2018-06-29T11:00:00.000Z',
+        true
+      ]
+    }
+    sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
+  })
 })
