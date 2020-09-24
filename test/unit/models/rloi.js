@@ -1,3 +1,4 @@
+const { parseStringPromise } = require('xml2js')
 const Lab = require('@hapi/lab')
 const Code = require('@hapi/code')
 const lab = exports.lab = Lab.script()
@@ -25,20 +26,17 @@ function getStubbedS3HelperGetObject (station) {
 }
 
 const valueParentSchemaQueryMatcher = sinon.match((matchValue) => {
-  const { value, error } = rloiValueParentSchema.query.validate(matchValue)
-  console.log({ matcher: 'valueParentSchemaQueryMatcher', matchValue, value, error })
+  const { error } = rloiValueParentSchema.query.validate(matchValue)
   return error === undefined
 }, 'parent query does not match expected schema')
 
 const valueParentSchemaVarsMatcher = sinon.match((matchValue) => {
-  const { value, error } = rloiValueParentSchema.vars.validate(matchValue)
-  console.log({ matcher: 'valueParentSchemaVarsMatcher', matchValue, value, error })
+  const { error } = rloiValueParentSchema.vars.validate(matchValue)
   return error === undefined
 }, 'parent vars does not match expected schema')
 
 const valuesSchemaQueryMatcher = sinon.match((matchValue) => {
-  const { value, error } = rloiValuesSchema.query.validate(matchValue)
-  console.log({ matcher: 'valuesSchemaQueryMatcher', matchValue, value, error })
+  const { error } = rloiValuesSchema.query.validate(matchValue)
   return error === undefined
 }, 'Values query does not match expected schema')
 
@@ -169,17 +167,33 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('RLOI process with non numeric return', async () => {
-    const s3 = new S3()
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
+    const s3 = getStubbedS3HelperGetObject(station)
     const db = getMockedDbHelper()
-    const file = await util.parseXml(fs.readFileSync('./test/data/rloi-test.xml'))
-    const Util2 = require('../../../lib/helpers/util')
-    sinon.stub(Util2.prototype, 'isNumeric').callsFake(() => {
-      console.log('in util 2 stub')
-      return false
-    })
-    const util2 = new Util2()
-    util2.isNumeric()
-    const rloi = new Rloi(db, s3, util2)
+    sinon.stub(util, 'isNumeric').returns(false)
+    const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
+    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 20)
+    sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 20)
+  })
+
+  lab.test('negative processed values should be errors', async () => {
+    const file = require('../../data/rloi-test-single.json')
+    const s3 = getStubbedS3HelperGetObject(station)
+    const db = getMockedDbHelper()
+    const rloi = new Rloi(db, s3, util)
+    await rloi.save(file, 's3://devlfw', 'testkey')
+    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
+    const expectedQuery = {
+      text: 'INSERT INTO "sls_telemetry_value" ("telemetry_value_parent_id", "value", "processed_value", "value_timestamp", "error") VALUES ($1, $2, $3, $4, $5)',
+      values: [
+        1,
+        1.986,
+        null,
+        '2018-06-29T11:00:00.000Z',
+        true
+      ]
+    }
+    sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
   })
 })
