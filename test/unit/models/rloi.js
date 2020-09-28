@@ -62,7 +62,7 @@ lab.experiment('rloi model', () => {
     sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 20)
   })
 
-  lab.test('processing on save should handle single station with no values', async () => {
+  lab.test('single station with no set of values should not update db', async () => {
     const db = getMockedDbHelper()
     const s3 = getStubbedS3HelperGetObject(station)
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-empty-single.xml'))
@@ -71,15 +71,15 @@ lab.experiment('rloi model', () => {
     sinon.assert.callCount(db.query, 0)
   })
 
-  lab.test('processing on save should handle multiple stations (one with no values)', async () => {
+  lab.test('station with set of values should insert parent and value telemetry records in db', async () => {
     const db = getMockedDbHelper()
     const s3 = getStubbedS3HelperGetObject(station)
-    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-empty.xml'))
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-single.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
-    sinon.assert.callCount(db.query, 4)
-    sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 2)
-    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 2)
+    sinon.assert.callCount(db.query, 2)
+    sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 1)
+    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
   })
 
   lab.test('RLOI process no station', async () => {
@@ -129,7 +129,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('subtract values should be applied', async () => {
-    const file = require('../../data/rloi-test-single.json')
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-single.xml'))
     const stationClone = clone(station)
     stationClone.Subtract = 0.5
 
@@ -151,7 +151,7 @@ lab.experiment('rloi model', () => {
     sinon.assert.calledOnceWithExactly(db.query.withArgs(valuesSchemaQueryMatcher), expectedQuery)
   })
   lab.test('negative processed values should not be errors', async () => {
-    const file = require('../../data/rloi-test-single.json')
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-single.xml'))
     const s3 = getStubbedS3HelperGetObject(station)
     const db = getMockedDbHelper()
     const rloi = new Rloi(db, s3, util)
@@ -171,7 +171,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('non-numeric values should be flagged as an error', async () => {
-    const file = clone(require('../../data/rloi-test-single.json'))
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-single.xml'))
     file.EATimeSeriesDataExchangeFormat.Station[0].SetofValues[0].Value[0]._ = 'blah'
 
     const s3 = getStubbedS3HelperGetObject(station)
@@ -193,7 +193,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('non-numeric subtract values should be be flagged as an error', async () => {
-    const file = require('../../data/rloi-test-single.json')
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-single.xml'))
     const stationClone = clone(station)
     stationClone.Subtract = 'blah'
 
@@ -216,7 +216,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('empty subtract values should be ignored', async () => {
-    const file = require('../../data/rloi-test-single.json')
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-single.xml'))
     const stationClone = clone(station)
     stationClone.Subtract = ''
 
