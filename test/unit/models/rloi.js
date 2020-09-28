@@ -31,7 +31,7 @@ function getStubbedS3HelperGetObject (station) {
   return stub
 }
 
-function getMockedDbHelper () {
+function getStubbedDbHelper () {
   const db = sinon.createStubInstance(Db)
   // Note: using the sinon.createStubInstance(MyConstructor, overrides) form didn't work for some reason
   // hence using this slightly less terse form
@@ -52,7 +52,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('RLOI process', async () => {
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const s3 = getStubbedS3HelperGetObject(station)
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const rloi = new Rloi(db, s3, util)
@@ -63,7 +63,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('single station with no set of values should not update db', async () => {
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const s3 = getStubbedS3HelperGetObject(station)
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-empty-single.xml'))
     const rloi = new Rloi(db, s3, util)
@@ -72,7 +72,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('station with set of values should insert parent and value telemetry records in db', async () => {
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const s3 = getStubbedS3HelperGetObject(station)
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-single.xml'))
     const rloi = new Rloi(db, s3, util)
@@ -84,7 +84,7 @@ lab.experiment('rloi model', () => {
 
   lab.test('RLOI process no station', async () => {
     const s3 = getStubbedS3Helper()
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
@@ -92,7 +92,7 @@ lab.experiment('rloi model', () => {
 
   lab.test('RLOI process no station', async () => {
     const s3 = getStubbedS3HelperGetObject(station2)
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
@@ -100,7 +100,7 @@ lab.experiment('rloi model', () => {
 
   lab.test('RLOI process no station', async () => {
     const s3 = getStubbedS3HelperGetObject(coastalStation)
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
@@ -119,7 +119,7 @@ lab.experiment('rloi model', () => {
   lab.test('RLOI process with non numeric return', async () => {
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     const s3 = getStubbedS3HelperGetObject(station)
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     sinon.stub(util, 'isNumeric').returns(false)
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
@@ -134,7 +134,7 @@ lab.experiment('rloi model', () => {
     stationClone.Subtract = 0.5
 
     const s3 = getStubbedS3HelperGetObject(stationClone)
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
     sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
@@ -153,7 +153,7 @@ lab.experiment('rloi model', () => {
   lab.test('negative processed values should not be errors', async () => {
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-single.xml'))
     const s3 = getStubbedS3HelperGetObject(station)
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
     sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
@@ -175,7 +175,7 @@ lab.experiment('rloi model', () => {
     file.EATimeSeriesDataExchangeFormat.Station[0].SetofValues[0].Value[0]._ = 'blah'
 
     const s3 = getStubbedS3HelperGetObject(station)
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
     sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
@@ -198,7 +198,7 @@ lab.experiment('rloi model', () => {
     stationClone.Subtract = 'blah'
 
     const s3 = getStubbedS3HelperGetObject(stationClone)
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
     sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
@@ -221,7 +221,7 @@ lab.experiment('rloi model', () => {
     stationClone.Subtract = ''
 
     const s3 = getStubbedS3HelperGetObject(stationClone)
-    const db = getMockedDbHelper()
+    const db = getStubbedDbHelper()
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
     sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
