@@ -62,12 +62,24 @@ lab.experiment('rloi model', () => {
     sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 20)
   })
 
-  lab.test('RLOI process empty values', async () => {
+  lab.test('processing on save should handle single station with no values', async () => {
+    const db = getMockedDbHelper()
+    const s3 = getStubbedS3HelperGetObject(station)
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-empty-single.xml'))
+    const rloi = new Rloi(db, s3, util)
+    await rloi.save(file, 's3://devlfw', 'testkey')
+    sinon.assert.callCount(db.query, 0)
+  })
+
+  lab.test('processing on save should handle multiple stations (one with no values)', async () => {
     const db = getMockedDbHelper()
     const s3 = getStubbedS3HelperGetObject(station)
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-empty.xml'))
     const rloi = new Rloi(db, s3, util)
     await rloi.save(file, 's3://devlfw', 'testkey')
+    sinon.assert.callCount(db.query, 4)
+    sinon.assert.callCount(db.query.withArgs(valuesSchemaQueryMatcher), 2)
+    sinon.assert.callCount(db.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 2)
   })
 
   lab.test('RLOI process no station', async () => {
