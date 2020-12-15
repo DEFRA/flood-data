@@ -104,12 +104,20 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('RLOI process no station', async () => {
+    sinon.restore()
+    sinon.stub(s3, 'getObject').callsFake(() => {
+      return Promise.resolve({ Body: JSON.stringify(station2) })
+    })
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
   })
 
   lab.test('RLOI process no station', async () => {
+    sinon.restore()
+    sinon.stub(s3, 'getObject').callsFake(() => {
+      return Promise.resolve({ Body: JSON.stringify(coastalStation) })
+    })
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
