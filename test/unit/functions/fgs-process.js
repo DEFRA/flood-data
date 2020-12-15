@@ -24,7 +24,6 @@ lab.experiment('fgs process', () => {
       return Promise.resolve({})
     })
     const request = sinon.stub(wreck, 'request').callsFake(() => {
-      console.log('in reqyest stub')
       return Promise.resolve({
         statements: [
           {
