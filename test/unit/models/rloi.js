@@ -21,16 +21,6 @@ function clone (a) {
   return JSON.parse(JSON.stringify(a))
 }
 
-// function getStubbedS3Helper () {
-//   return sinon.createStubInstance(S3)
-// }
-
-// function getStubbedS3HelperGetObject (station) {
-//   const stub = getStubbedS3Helper()
-//   stub.getObject.resolves({ Body: JSON.stringify(station) })
-//   return stub
-// }
-
 function getStubbedDbHelper () {
   const client = sinon.createStubInstance(Client)
   // Note: using the sinon.createStubInstance(MyConstructor, overrides) form didn't work for some reason
@@ -49,21 +39,6 @@ lab.experiment('rloi model', () => {
     sinon.stub(s3, 'getObject').callsFake(() => {
       return Promise.resolve({ Body: JSON.stringify(station) })
     })
-    // sinon.stub(util, 'parseXml').callsFake(() => {
-    //   return Promise.resolve({})
-    // })
-    // sinon.stub(rloi, 'save').callsFake(() => {
-    //   return Promise.resolve({})
-    // })
-    // sinon.stub(Client.prototype, 'connect').callsFake(() => {
-    //   return Promise.resolve({})
-    // })
-    // sinon.stub(Client.prototype, 'query').callsFake(() => {
-    //   return Promise.resolve({})
-    // })
-    // sinon.stub(Client.prototype, 'end').callsFake(() => {
-    //   return Promise.resolve({})
-    // })
   })
   lab.afterEach(() => {
     sinon.verify()
