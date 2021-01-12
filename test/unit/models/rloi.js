@@ -14,7 +14,9 @@ const sinon = require('sinon')
 const {
   valuesSchemaQueryMatcher,
   valueParentSchemaQueryMatcher,
-  valueParentSchemaVarsMatcher
+  valueParentSchemaVarsMatcher,
+  stationSchemaQueryMatcher,
+  stationSchemaVarsMatcher
 } = require('../../schemas/matchers')
 
 function clone (a) {
@@ -30,6 +32,8 @@ function getStubbedDbHelper () {
     .resolves()
     .withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher)
     .resolves({ rows: [{ telemetry_value_parent_id: 1 }] })
+    .withArgs(stationSchemaQueryMatcher, stationSchemaVarsMatcher)
+    .resolves()
   return client
 }
 
@@ -51,9 +55,9 @@ lab.experiment('rloi model', () => {
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
-    sinon.assert.callCount(client.query, 40)
-    sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 20)
-    sinon.assert.callCount(client.query.withArgs(valuesSchemaQueryMatcher), 20)
+    sinon.assert.callCount(client.query, 30)
+    sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 15)
+    sinon.assert.callCount(client.query.withArgs(valuesSchemaQueryMatcher), 15)
   })
 
   lab.test('single station with no set of values should not update db', async () => {
@@ -112,9 +116,9 @@ lab.experiment('rloi model', () => {
     const client = getStubbedDbHelper()
     sinon.stub(util, 'isNumeric').returns(false)
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
-    sinon.assert.callCount(client.query, 40)
-    sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 20)
-    sinon.assert.callCount(client.query.withArgs(valuesSchemaQueryMatcher), 20)
+    sinon.assert.callCount(client.query, 30)
+    sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 15)
+    sinon.assert.callCount(client.query.withArgs(valuesSchemaQueryMatcher), 15)
   })
 
   lab.test('subtract values should be applied', async () => {
