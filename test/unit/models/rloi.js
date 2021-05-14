@@ -298,4 +298,30 @@ lab.experiment('rloi model', () => {
     }
     sinon.assert.calledOnceWithExactly(client.query.withArgs(stationSchemaQueryMatcher), expectedStationQuery.text, expectedStationQuery.values)
   })
+
+  lab.test('Rainfall station and value is stored in DB and station name with postfix in middle of name', async () => {
+    sinon.restore()
+    sinon.stub(s3, 'getObject').callsFake(() => {
+      return Promise.resolve()
+    })
+    const client = getStubbedDbHelper()
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-rainfall-postfix-middle.xml'))
+    await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
+    sinon.assert.callCount(client.query, 3)
+    sinon.assert.callCount(client.query.withArgs(valuesSchemaQueryMatcher), 1)
+    sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
+    sinon.assert.callCount(client.query.withArgs(stationSchemaQueryMatcher, stationSchemaVarsMatcher), 1)
+    const expectedStationQuery = {
+      text: 'INSERT INTO u_flood.sls_telemetry_station (station_reference, region, station_name, ngr, easting, northing) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT ON CONSTRAINT unique_station DO UPDATE SET station_name = EXCLUDED.station_name,ngr = EXCLUDED.ngr,easting = EXCLUDED.easting,northing = EXCLUDED.northing;',
+      values: [
+        '067015_TG 132',
+        'North West',
+        'Test PLUVIO RAINGAUGE station',
+        'SJ3484041474',
+        334840,
+        341474
+      ]
+    }
+    sinon.assert.calledOnceWithExactly(client.query.withArgs(stationSchemaQueryMatcher), expectedStationQuery.text, expectedStationQuery.values)
+  })
 })
