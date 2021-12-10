@@ -1,0 +1,13 @@
+version: '3.3'
+services:
+  queue:
+    image: softwaremill/elasticmq-native:latest
+    container_name: sqs-mock
+    ports:
+      - 9324:9324
+      - 9325:9325
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./elasticmq.conf:/opt/elasticmq.conf
+ 
