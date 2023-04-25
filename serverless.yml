@@ -56,3 +56,7 @@ functions:
     name: ${env:LFW_DATA_TARGET_ENV_NAME}${self:service}-fgsProcess
     handler: lib/functions/fgs-process.handler
     timeout: 60
+  imtdProcess:
+    name: ${env:LFW_DATA_TARGET_ENV_NAME}${self:service}-imtdProcess
+    handler: lib/functions/imtd-process.handler
+    timeout: 60
