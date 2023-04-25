@@ -1,0 +1,14 @@
+{
+  "Records": [
+    {
+      "s3": {
+        "bucket": {
+          "name": "devldnlfws3bkt001"
+        },
+        "object": {
+          "key": "imtd/imtd.json"
+        }
+      }
+    }
+  ]
+}
