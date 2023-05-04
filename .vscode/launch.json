@@ -115,6 +115,21 @@
             "./test/events/imtd-event.json",
             "-- --inspect-brk"
         ]
+    },
+    {
+        "type": "node",
+        "request": "launch",
+        "name": "run imtdProcess create file function",
+        "program": "${workspaceFolder}/node_modules/.bin/sls",
+        "args": [
+            "invoke",
+            "local",
+            "-f",
+            "imtdFileCreateProcess",
+            "--path",
+            "./test/events/imtd-file-create-event.json",
+            "-- --inspect-brk"
+        ]
     }
   ]
 }
