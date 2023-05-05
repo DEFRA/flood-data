@@ -1,45 +1,71 @@
-// const Lab = require('@hapi/lab')
-// const { expect } = require('@hapi/code')
-// const { afterEach, beforeEach, describe, it } = exports.lab = Lab.script()
-// const sinon = require('sinon')
-// const axios = require('axios')
-// const { fetchDataForStationIds } = require('../../../lib/functions/imtd-process')
+'use strict';
 
-// describe('fetchDataForStationIds', () => {
-//   let axiosGetStub
+const Lab = require('@hapi/lab');
+const lab = (exports.lab = Lab.script());
+// const Code = require('@hapi/code')
+const handler = require('../../../lib/functions/imtd-process').handler;
+const event = require('../../events/imtd-event.json');
+const maxStations = require('../../data/imtd-stations').maxStations;
+const lessStations = require('../../data/imtd-stations').lessStations;
+const apiResponse = require('../../data/imtd-stations').apiResponse;
+const axios = require('axios');
 
-//   beforeEach(() => {
-//     axiosGetStub = sinon.stub(axios, 'get')
-//   })
+const s3 = require('../../../lib/helpers/s3');
+const { Pool } = require('pg');
 
-//   afterEach(() => {
-//     axiosGetStub.restore()
-//   })
+// start up Sinon sandbox
+const sinon = require('sinon').createSandbox();
 
-//   it('returns an array of threshold data for each station ID', async () => {
-//     const stationIds = [{ rloi_id: '123' }, { rloi_id: '456' }]
-//     const thresholdData1 = [{ stationId: '123', floodWarningArea: 'Area 1', floodWarningType: 'Type 1', direction: 'Direction 1', level: 1 }]
-//     const thresholdData2 = [{ stationId: '456', floodWarningArea: 'Area 2', floodWarningType: 'Type 2', direction: 'Direction 2', level: 2 }]
-//     axiosGetStub
-//       .onFirstCall().resolves({ data: [{ TimeSeriesMetaData: [] }] })
-//       .onSecondCall().resolves({ data: [{ TimeSeriesMetaData: [] }] })
-//     sinon.stub(require('../models/parse-thresholds'), 'parseThresholds').resolves(thresholdData1, thresholdData2)
+lab.experiment('imtd processing', () => {
+  lab.beforeEach(async () => {
+    process.env.LFW_DATA_DB_CONNECTION = '';
+    // setup mocks
+    sinon.stub(s3, 'deleteObject').callsFake(() => {
+      return Promise.resolve({});
+    });
+    sinon.stub(s3, 'putObject').callsFake(() => {
+      return Promise.resolve({});
+    });
+    sinon.stub(Pool.prototype, 'connect').callsFake(() => {
+      return Promise.resolve({
+        query: sinon.stub().resolves({}),
+        release: sinon.stub().resolves({}),
+      });
+    });
+    sinon.stub(Pool.prototype, 'query').callsFake(() => {
+      return Promise.resolve({});
+    });
+    sinon.stub(Pool.prototype, 'end').callsFake(() => {
+      return Promise.resolve({});
+    });
+    sinon.stub(axios, 'get').callsFake(() => {
+      return Promise.resolve(apiResponse);
+    });
+  });
+  lab.afterEach(() => {
+    sinon.restore();
+  });
 
-//     const result = await fetchDataForStationIds(stationIds)
+  lab.test('imtd process latest.json stations length over 50', async () => {
+    sinon.stub(s3, 'getObject').callsFake(() => {
+      return Promise.resolve({ Body: maxStations });
+    });
 
-//     expect(result).to.equal([...thresholdData1, ...thresholdData2])
-//   })
+    await handler(event);
+  });
 
-//   it('handles failed requests and returns an array of failed station IDs', async () => {
-//     const stationIds = [{ rloi_id: '123' }, { rloi_id: '456' }]
-//     axiosGetStub
-//       .onFirstCall().resolves({ data: [{ TimeSeriesMetaData: [] }] })
-//       .onSecondCall().rejects({ response: { status: 404 } })
-//     sinon.stub(require('../models/parse-thresholds'), 'parseThresholds').resolves([{ stationId: '123', floodWarningArea: 'Area 1', floodWarningType: 'Type 1', direction: 'Direction 1', level: 1 }])
+  lab.test('imtd process', async () => {
+    sinon.stub(s3, 'getObject').callsFake(() => {
+      return Promise.resolve({ Body: lessStations });
+    });
 
-//     const result = await fetchDataForStationIds(stationIds)
+    await handler(event);
+  });
 
-//     expect(result).to.equal([{ stationId: '123', floodWarningArea: 'Area 1', floodWarningType: 'Type 1', direction: 'Direction 1', level: 1 }])
-//     expect(result.failed).to.equal([{ rloi_id: '456' }])
-//   })
-// })
+  lab.test('imtd process S3 error', async () => {
+    s3.getObject = () => {
+      return Promise.reject(new Error('test error'));
+    };
+    await Code.expect(handler(event)).to.reject();
+  });
+});
