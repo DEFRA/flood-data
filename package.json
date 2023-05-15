@@ -7,7 +7,6 @@
   },
   "scripts": {
     "deploy": "sls deploy -v --force",
-    "dev": "NODE_ENV=local nodemon --exec \"serverless offline start --stage local\" -e \"extensions,to,watch,for,example,js,ts,yml\"  ",
     "integration-test": "lab test/integration -v -r console -o stdout -r junit -o test/output-integration.xml -m 60000",
     "lint": "standard",
     "unit-test": "lab test/unit -c -r console -o stdout -r lcov -o coverage/lcov.info -r junit -o test/output-unit.xml",
@@ -36,7 +35,6 @@
   "dependencies": {
     "@hapi/joi": "^17.1.1",
     "@hapi/wreck": "^17.1.0",
-    "@supercharge/promise-pool": "^2.4.0",
     "async-retry": "^1.3.3",
     "aws-sdk": "2.1046.0",
     "csvtojson": "2.0.10",
