@@ -7,9 +7,9 @@
   },
   "scripts": {
     "deploy": "sls deploy -v --force",
-    "dev": "NODE_ENV=local nodemon --exec \"serverless offline start --stage local\" -e \"extensions,to,watch,for,example,js,ts,yml\"  ",
     "integration-test": "lab test/integration -v -r console -o stdout -r junit -o test/output-integration.xml -m 60000",
     "lint": "standard",
+    "lint:fix": "standard --fix",
     "unit-test": "lab test/unit -c -r console -o stdout -r lcov -o coverage/lcov.info -r junit -o test/output-unit.xml",
     "post-deployment-test": "npm run integration-test",
     "pre-deployment-test": "npm run lint && npm run unit-test",
