@@ -6,24 +6,19 @@ const fs = require('fs')
 const util = require('../../../lib/helpers/util')
 const station = require('../../../lib/models/station')
 const s3 = require('../../../lib/helpers/s3')
-const { Client } = require('pg')
+const PostGresClient = require('../../../lib/helpers/postgres-client')
 
 // start up Sinon sandbox
 const sinon = require('sinon').createSandbox()
 
 lab.experiment('station model', () => {
   lab.beforeEach(() => {
+    process.env.LFW_DATA_DB_CONNECTION  = 'LFW_DATA_DB_CONNECTION'
     // setup mocks
     sinon.stub(s3, 'putObject').callsFake(() => {
       return Promise.resolve({ ETag: '"47f693afd590c0b546bc052f6cfb4b71"' })
     })
-    sinon.stub(Client.prototype, 'connect').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'query').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'end').callsFake(() => {
+    sinon.stub(PostGresClient.prototype, 'query').callsFake(() => {
       return Promise.resolve({})
     })
   })
@@ -33,7 +28,7 @@ lab.experiment('station model', () => {
 
   lab.test('Station save to database', async () => {
     const stations = await util.parseCsv(fs.readFileSync('./test/data/rloiStationData.csv').toString())
-    const client = new Client()
+    const client = new PostGresClient({ connection: process.env.LFW_DATA_DB_CONNECTION })
     await station.saveToDb(stations, client)
   })
 
@@ -67,12 +62,12 @@ lab.experiment('station model', () => {
   })
 
   lab.test('db error', async () => {
-    Client.prototype.query.restore()
-    sinon.stub(Client.prototype, 'query').callsFake((query) => {
+    PostGresClient.prototype.query.restore()
+    sinon.stub(PostGresClient.prototype, 'query').callsFake((query) => {
       return Promise.reject(new Error('test error'))
     })
     const stations = await util.parseCsv(fs.readFileSync('./test/data/rloiStationData.csv').toString())
-    const client = new Client()
+    const client = new PostGresClient({connection:  process.env.LFW_DATA_DB_CONNECTION })
     await Code.expect(station.saveToDb(stations, client)).to.reject()
   })
 })

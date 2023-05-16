@@ -2,11 +2,10 @@ const { parseStringPromise } = require('xml2js')
 const Lab = require('@hapi/lab')
 const lab = exports.lab = Lab.script()
 const fs = require('fs')
-
 const util = require('../../../lib/helpers/util')
 const rloi = require('../../../lib/models/rloi')
-const { Client } = require('pg')
 const s3 = require('../../../lib/helpers/s3')
+const PostGresClient = require('../../../lib/helpers/postgres-client')
 const station = require('../../data/station.json')
 const station2 = require('../../data/station2.json')
 const coastalStation = require('../../data/station-coastal.json')
@@ -24,7 +23,7 @@ function clone (a) {
 }
 
 function getStubbedDbHelper () {
-  const client = sinon.createStubInstance(Client)
+  const client = sinon.createStubInstance(PostGresClient)
   // Note: using the sinon.createStubInstance(MyConstructor, overrides) form didn't work for some reason
   // hence using this slightly less terse form
   client.query
@@ -118,7 +117,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('RLOI delete Old', async () => {
-    const clientHelperMock = sinon.createStubInstance(Client)
+    const clientHelperMock = sinon.createStubInstance(PostGresClient)
     clientHelperMock.query = sinon.mock()
       .withArgs(sinon.match(/^DELETE FROM u_flood.sls_telemetry_value_parent/))
       .once(1)
