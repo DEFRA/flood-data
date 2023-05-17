@@ -1,37 +1,73 @@
 'use strict'
+// ******* SETUP *******
+// ***** Libraries *****
 const Lab = require('@hapi/lab')
-const lab = exports.lab = Lab.script()
+const Code = require('@hapi/code')
+const LambdaTester = require('lambda-tester')
+const proxyquire = require('proxyquire').noCallThru()
+const path = require('path')
+const fs = require('fs')
 const AWS = require('aws-sdk')
-const lambda = new AWS.Lambda()
-AWS.config.update({ region: process.env.LFW_DATA_TARGET_REGION })
+const sinon = require('sinon').createSandbox()
 
-lab.experiment('Test stationProcess lambda invoke', () => {
-  lab.test('stationProcess invoke', async () => {
-    const event = {
-      Records: [
-        {
-          s3: {
-            bucket: {
-              name: process.env.LFW_DATA_SLS_BUCKET
-            },
-            object: {
-              key: 'fwfidata/ENT_7010/rloiStationData.csv'
-            }
-          }
-        }
-      ]
-    }
-    const data = await lambda.invoke({
-      FunctionName: `${process.env.LFW_DATA_TARGET_ENV_NAME}${process.env.LFW_DATA_SERVICE_CODE}-stationProcess`,
-      InvocationType: 'RequestResponse',
-      Payload: JSON.stringify(event)
+const lab = exports.lab = Lab.script()
+
+const s3Client = new AWS.S3({
+  accessKeyId: 'AKIAIOSFODNN7EXAMPLE', // Replace with your access key ID
+  secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', // Replace with your secret access key
+  endpoint: 'http://localhost:9444',
+  s3ForcePathStyle: true, // Required for S3 Ninja
+  signatureVersion: 'v4'
+})
+
+const LFW_DATA_SLS_BUCKET = 'bucket'
+
+lab.experiment('Test stationProcess lambda invoke', { timeout: 999999000 }, () => {
+  let lambda
+
+  lab.beforeEach(async function () {
+    process.env.LFW_DATA_SLS_BUCKET = LFW_DATA_SLS_BUCKET
+    process.env.NODE_ENV = 'LOCAL_TEST'
+    process.env.LFW_DATA_DB_CONNECTION = 'postgresql://postgres:fr24Password@localhost:5432/flooddev'
+
+    lambda = proxyquire('../../lib/functions/station-process', {})
+  })
+
+  lab.afterEach(async function () {
+    sinon.restore()
+  })
+
+  lab.test('should perform no operation when the station array is empty', async () => {
+    const bucketName = LFW_DATA_SLS_BUCKET
+    const key = 'rloi/rloiStationData.xml'
+    const rloiFileTestPath = path.join(__dirname, '../data/rloiStationData.csv')
+
+    const s3Data = fs.readFileSync(rloiFileTestPath).toString()
+
+    await s3Client.upload({
+      Body: s3Data,
+      Bucket: bucketName,
+      Key: key
     }).promise()
-    if (data.StatusCode !== 200) {
-      throw new Error('stationProcess non 200 response')
+
+    const event = {
+      Records: [{ s3: { object: { key }, bucket: { name: bucketName } } }]
     }
-    const payload = JSON.parse(data.Payload)
-    if (payload && payload.errorMessage) {
-      throw new Error('stationProcess error returned: ' + payload.errorMessage)
-    }
+
+    await LambdaTester(lambda.handler)
+      .event(event)
+      .expectResult((lambdaResponse) => {
+        Code.expect(lambdaResponse.saveStationsToDb === lambdaResponse.saveStationsToS3.length).to.be.true()
+
+        Code.expect(lambdaResponse).to.equal({
+          saveStationsToDb: 4,
+          saveStationsToS3: [
+            { success: true },
+            { success: true },
+            { success: true },
+            { success: true }
+          ]
+        })
+      })
   })
 })

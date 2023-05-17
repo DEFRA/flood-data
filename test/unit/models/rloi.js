@@ -5,7 +5,7 @@ const fs = require('fs')
 const util = require('../../../lib/helpers/util')
 const rloi = require('../../../lib/models/rloi')
 const s3 = require('../../../lib/helpers/s3')
-const PostGresClient = require('../../../lib/helpers/postgres-client')
+const PostgresClient = require('../../../lib/helpers/postgres-client')
 const station = require('../../data/station.json')
 const station2 = require('../../data/station2.json')
 const coastalStation = require('../../data/station-coastal.json')
@@ -23,7 +23,7 @@ function clone (a) {
 }
 
 function getStubbedDbHelper () {
-  const client = sinon.createStubInstance(PostGresClient)
+  const client = sinon.createStubInstance(PostgresClient)
   // Note: using the sinon.createStubInstance(MyConstructor, overrides) form didn't work for some reason
   // hence using this slightly less terse form
   client.query
@@ -117,7 +117,7 @@ lab.experiment('rloi model', () => {
   })
 
   lab.test('RLOI delete Old', async () => {
-    const clientHelperMock = sinon.createStubInstance(PostGresClient)
+    const clientHelperMock = sinon.createStubInstance(PostgresClient)
     clientHelperMock.query = sinon.mock()
       .withArgs(sinon.match(/^DELETE FROM u_flood.sls_telemetry_value_parent/))
       .once(1)

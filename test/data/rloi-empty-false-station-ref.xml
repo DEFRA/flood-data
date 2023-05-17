@@ -7,14 +7,14 @@
 	<md:Date>2018-10-03</md:Date>
 	<md:Time>09:40:09</md:Time>
 	<md:Identifier>NTC901</md:Identifier>
-	<Station stationReference="067015_TG_132" region="EA Wales" stationName="Manley Hall No1 LVL-River Level" ngr="SJ3484041474">
-		<SetofValues parameter="Water Level" qualifier="Stage" dataType="Instantaneous" period="15 min" units="m" startDate="2018-10-03" startTime="09:15:00" endDate="2018-10-03" endTime="09:30:00">
-			<Value date="2018-10-03" time="09:15:00">0.452</Value>
-			<Value date="2018-10-03" time="09:30:00">0.451</Value>
+	<Station stationReference="refnotthere1" region="EA Wales" stationName="Manley Hall No1 LVL-River Level" ngr="SJ3484041474">
+		<SetofValues parameter="Rainfall" qualifier="Stage" dataType="Instantaneous" period="15 min" units="m" startDate="2018-10-03" startTime="09:15:00" endDate="2018-10-03" endTime="09:30:00">
+			<Value date="2018-10-03" time="09:15:00">1111</Value>
+			<Value date="2018-10-05" time="09:30:00">1111</Value>
 		</SetofValues>
 	</Station>
-	<Station stationReference="066011_TG_9202" region="EA Wales" stationName="Cwmlanerch LVL" ngr="SH8011857978">
-		<SetofValues parameter="Water Level" qualifier="Stage" dataType="Instantaneous" period="15 min" units="m" startDate="2018-10-03" startTime="09:15:00" endDate="2018-10-03" endTime="09:30:00">
+	<Station stationReference="refnotthere2" region="EA Wales" stationName="Cwmlanerch LVL" ngr="SH8011857978">
+		<SetofValues parameter="Rainfall" qualifier="Stage" dataType="Instantaneous" period="15 min" units="m" startDate="2018-10-03" startTime="09:15:00" endDate="2018-10-03" endTime="09:30:00">
 			<Value date="2018-10-03" time="09:15:00">0.725</Value>
 			<Value date="2018-10-03" time="09:30:00">0.725</Value>
 		</SetofValues>

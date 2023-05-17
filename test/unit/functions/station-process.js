@@ -27,7 +27,7 @@ lab.experiment('station processing', () => {
     sinon.stub(station, 'saveToDb').callsFake(() => {
       return Promise.resolve({})
     })
-    sinon.stub(station, 'saveToObjects').callsFake(() => {
+    sinon.stub(station, 'saveToUploads').callsFake(() => {
       return Promise.resolve({})
     })
     sinon.stub(Client.prototype, 'connect').callsFake(() => {

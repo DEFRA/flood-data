@@ -13,7 +13,7 @@ lab.experiment('Test fgsProcess lambda invoke', () => {
   lab.beforeEach(function () {
     process.env.LFW_DATA_SLS_BUCKET = LFW_DATA_SLS_BUCKET
     process.env.NODE_ENV = 'LOCAL_TEST'
-    lambda = proxyquire('../../lib/functions/fwis-process', {})
+    lambda = proxyquire('../../lib/functions/fgs-process', {})
   })
 
   lab.test('The fgsProcess is invoked to verify whether the Lambda function is correctly uploading stations using the appropriate key and bucket.', async () => {

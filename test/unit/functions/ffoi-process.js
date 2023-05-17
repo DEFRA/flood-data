@@ -9,9 +9,10 @@ const event = require('../../events/ffoi-event.json')
 const s3 = require('../../../lib/helpers/s3')
 const util = require('../../../lib/helpers/util')
 const ffoi = require('../../../lib/models/ffoi')
-const PostGresClient = require('../../../lib/helpers/postgres-client')
+const PostgresClient = require('../../../lib/helpers/postgres-client')
 
 // start up Sinon sandbox
+
 const sinon = require('sinon').createSandbox()
 
 lab.experiment('FFOI processing', () => {
@@ -23,7 +24,7 @@ lab.experiment('FFOI processing', () => {
     sinon.stub(util, 'parseXml').callsFake(() => {
       return Promise.resolve({})
     })
-    sinon.stub(PostGresClient.prototype, 'query').callsFake(() => {
+    sinon.stub(PostgresClient.prototype, 'query').callsFake(() => {
       return Promise.resolve({})
     })
     sinon.stub(ffoi, 'save').callsFake(() => {

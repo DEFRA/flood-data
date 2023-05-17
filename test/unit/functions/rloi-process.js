@@ -6,7 +6,7 @@ const event = require('../../events/fwis-event.json')
 const s3 = require('../../../lib/helpers/s3')
 const util = require('../../../lib/helpers/util')
 const rloi = require('../../../lib/models/rloi')
-const PostGresClient = require('../../../lib/helpers/postgres-client')
+const PostgresClient = require('../../../lib/helpers/postgres-client')
 
 // start up Sinon sandbox
 const sinon = require('sinon').createSandbox()
@@ -23,7 +23,7 @@ lab.experiment('rloi processing', () => {
     sinon.stub(rloi, 'save').callsFake(() => {
       return Promise.resolve({})
     })
-    sinon.stub(PostGresClient.prototype, 'query').callsFake(() => {
+    sinon.stub(PostgresClient.prototype, 'query').callsFake(() => {
       return Promise.resolve({})
     })
   })
