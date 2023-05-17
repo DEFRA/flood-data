@@ -5,7 +5,7 @@ const fs = require('fs')
 
 const util = require('../../../lib/helpers/util')
 const rloi = require('../../../lib/models/rloi')
-const { Client } = require('pg')
+const Client = require('knex')({ client: 'pg' })
 const s3 = require('../../../lib/helpers/s3')
 const station = require('../../data/station.json')
 const station2 = require('../../data/station2.json')
@@ -24,17 +24,25 @@ function clone (a) {
 }
 
 function getStubbedDbHelper () {
-  const client = sinon.createStubInstance(Client)
+  const client = sinon.stub(Client)
   // Note: using the sinon.createStubInstance(MyConstructor, overrides) form didn't work for some reason
   // hence using this slightly less terse form
-  client.query
-    .withArgs(valuesSchemaQueryMatcher)
-    .resolves()
+  client.raw
     .withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher)
     .resolves({ rows: [{ telemetry_value_parent_id: 1 }] })
     .withArgs(stationSchemaQueryMatcher, stationSchemaVarsMatcher)
     .resolves()
+
+  client.insert
+    .withArgs(valuesSchemaQueryMatcher)
+    .resolves()
+
   return client
+}
+
+async function sandbox (client, values) {
+  await client.into('sls_telemetry_value').insert(values)
+  await client.raw('select * from sls_telemetry_value')
 }
 
 lab.experiment('rloi model', () => {
@@ -51,13 +59,53 @@ lab.experiment('rloi model', () => {
     sinon.restore()
   })
 
+  lab.test('sandbox', async () => {
+    const values = [
+      {
+        telemetry_value_parent_id: 1,
+        error: false,
+        value: 1.1,
+        processed_value: 2.1,
+        value_timestamp: '2018-06-29T11:00:00.000Z'
+      }
+    ]
+    console.log({ query: await Client.into('sls_telemetry_value').insert(values).toString() })
+    const client = sinon.stub(Client)
+    client.into
+      .withArgs('sls_telemetry_value')
+      .returnsThis()
+    client.insert
+      .resolves()
+    client.raw
+      .resolves()
+
+    await sandbox(client, [false, 1.181, 1, 3.181, '2018-06-29T10:15:00.000Z'])
+    sinon.assert.callCount(client.into, 1)
+    sinon.assert.calledOnceWithExactly(client.insert, valuesSchemaQueryMatcher)
+    sinon.assert.callCount(client.raw, 1)
+  })
+
   lab.test('RLOI process', async () => {
-    const client = getStubbedDbHelper()
+    const client = sinon.stub(Client)
+    client.raw
+      .withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher)
+      .resolves({ rows: [{ telemetry_value_parent_id: 1 }] })
+      .withArgs(stationSchemaQueryMatcher, stationSchemaVarsMatcher)
+      .resolves()
+    client.into
+      .withArgs('sls_telemetry_value')
+      .returnsThis()
+    client.insert
+      .withArgs(valuesSchemaQueryMatcher)
+      .resolves()
+    client.raw
+      .resolves()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
-    sinon.assert.callCount(client.query, 32)
-    sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 16)
-    sinon.assert.callCount(client.query.withArgs(valuesSchemaQueryMatcher), 16)
+    sinon.assert.callCount(client.raw, 16)
+    sinon.assert.callCount(client.raw.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 16)
+    sinon.assert.callCount(client.insert, 16)
+    sinon.assert.callCount(client.insert.withArgs(valuesSchemaQueryMatcher), 16)
   })
 
   lab.test('RLOI process no station match', async () => {
@@ -70,9 +118,9 @@ lab.experiment('rloi model', () => {
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
     // Will only process the Water level data as no station data returned therefore rloi data not needed (this is a bit over engineered)
     sinon.assert.callCount(client.query, 3)
-    sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
-    sinon.assert.callCount(client.query.withArgs(valuesSchemaQueryMatcher), 1)
-    sinon.assert.callCount(client.query.withArgs(stationSchemaQueryMatcher, stationSchemaVarsMatcher), 1)
+    sinon.assert.callCount(client.raw.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
+    sinon.assert.callCount(client.raw.withArgs(valuesSchemaQueryMatcher), 1)
+    sinon.assert.callCount(client.raw.withArgs(stationSchemaQueryMatcher, stationSchemaVarsMatcher), 1)
   })
 
   lab.test('single station with no set of values should not update db', async () => {

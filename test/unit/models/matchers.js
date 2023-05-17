@@ -49,11 +49,16 @@ lab.experiment('matchers', () => {
   })
 
   lab.test('insert into sls_telemetry_value should match', async () => {
-    const query = {
-      text: 'INSERT INTO "sls_telemetry_value" ("telemetry_value_parent_id", "value", "processed_value", "value_timestamp", "error") VALUES ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20)',
-      values: [1, 1.986, null, '2018-06-29T10:15:00.000Z', true, 1, 1.986, null, '2018-06-29T10:30:00.000Z', true, 1, 1.986, null, '2018-06-29T10:45:00.000Z', true, 1, 1.986, null, '2018-06-29T11:00:00.000Z', true]
-    }
-    Code.expect(valuesSchemaQueryMatcher.test(query)).to.be.true()
+    const values = [
+      {
+        telemetry_value_parent_id: 1,
+        error: false,
+        value: 1.1,
+        processed_value: 2.1,
+        value_timestamp: '2018-06-29T11:00:00.000Z'
+      }
+    ]
+    Code.expect(valuesSchemaQueryMatcher.test(values)).to.be.true()
   })
 
   lab.test('insert into sls_telemetry_value_parent should not match', async () => {

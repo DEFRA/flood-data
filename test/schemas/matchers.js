@@ -12,7 +12,7 @@ const valueParentSchemaVarsMatcher = sinon.match((matchValue) => {
 }, 'parent vars does not match expected schema')
 
 const valuesSchemaQueryMatcher = sinon.match((matchValue) => {
-  return rloiValuesSchema.query.validate(matchValue).error === undefined
+  return rloiValuesSchema.vars.validate(matchValue).error === undefined
 }, 'Values query does not match expected schema')
 
 const stationSchemaQueryMatcher = sinon.match((matchValue) => {
