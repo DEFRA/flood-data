@@ -1,5 +1,32 @@
-const maxStations = '[{ "rloi_id":1001 },{ "rloi_id":1002 },{ "rloi_id":1003 },{ "rloi_id":1004 },{ "rloi_id":1005 },{ "rloi_id":1006 },{ "rloi_id":1007 },{ "rloi_id":1008 },{ "rloi_id":1009 },{ "rloi_id":1010 },{ "rloi_id":1011 },{ "rloi_id":1012 },{ "rloi_id":1013 },{ "rloi_id":1014 },{ "rloi_id":1015 },{ "rloi_id":1016 },{ "rloi_id":1017 },{ "rloi_id":1018 },{ "rloi_id":1019 },{ "rloi_id":1020 },{ "rloi_id":1021 },{ "rloi_id":1022 },{ "rloi_id":1023 },{ "rloi_id":1024 },{ "rloi_id":1025 },{ "rloi_id":1026 },{ "rloi_id":1027 },{ "rloi_id":1028 },{ "rloi_id":1029 },{ "rloi_id":1030 },{ "rloi_id":1031 },{ "rloi_id":1032 },{ "rloi_id":1033 },{ "rloi_id":1034 },{ "rloi_id":1035 },{ "rloi_id":1036 },{ "rloi_id":1037 },{ "rloi_id":1038 },{ "rloi_id":1039 },{ "rloi_id":1040 },{ "rloi_id":1041 },{ "rloi_id":1042 },{ "rloi_id":1043 },{ "rloi_id":1044 },{ "rloi_id":1045 },{ "rloi_id":1046 },{ "rloi_id":1047 },{ "rloi_id":1048 },{ "rloi_id":1049 },{ "rloi_id":1050 },{ "rloi_id":1051 }]'
-const lessStations = '[{ "rloi_id":1001 },{ "rloi_id":1002 },{ "rloi_id":1003 },{ "rloi_id":1004 }]'
+const stations =
+{
+  rows: [
+    {
+      rloi_id: 1001
+    },
+    {
+      rloi_id: 1006
+    },
+    {
+      rloi_id: 1009
+    },
+    {
+      rloi_id: 1010
+    },
+    {
+      rloi_id: 1011
+    },
+    {
+      rloi_id: 1013
+    },
+    {
+      rloi_id: 1014
+    },
+    {
+      rloi_id: 1017
+    }
+  ]
+}
 
 const apiResponse = {
   status: 200,
@@ -74,4 +101,4 @@ const apiResponse = {
   ]
 }
 
-module.exports = { maxStations, lessStations, apiResponse }
+module.exports = { stations, apiResponse }

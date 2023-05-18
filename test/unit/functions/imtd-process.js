@@ -5,11 +5,10 @@ const lab = (exports.lab = Lab.script())
 const Code = require('@hapi/code')
 const handler = require('../../../lib/functions/imtd-process').handler
 const event = require('../../events/imtd-event.json')
-const maxStations = require('../../data/imtd-stations').maxStations
+const stations = require('../../data/imtd-stations').stations
 const apiResponse = require('../../data/imtd-stations').apiResponse
 const axios = require('axios')
 
-const s3 = require('../../../lib/helpers/s3')
 const { Pool } = require('pg')
 
 // start up Sinon sandbox
@@ -19,12 +18,6 @@ lab.experiment('imtd processing', () => {
   lab.beforeEach(async () => {
     process.env.LFW_DATA_DB_CONNECTION = ''
     // setup mocks
-    sinon.stub(s3, 'deleteObject').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(s3, 'putObject').callsFake(() => {
-      return Promise.resolve({})
-    })
     sinon.stub(Pool.prototype, 'connect').callsFake(() => {
       return Promise.resolve({
         query: sinon.stub().resolves({}),
@@ -32,13 +25,10 @@ lab.experiment('imtd processing', () => {
       })
     })
     sinon.stub(Pool.prototype, 'query').callsFake(() => {
-      return Promise.resolve({})
+      return Promise.resolve(stations)
     })
     sinon.stub(Pool.prototype, 'end').callsFake(() => {
       return Promise.resolve({})
-    })
-    sinon.stub(axios, 'get').callsFake(() => {
-      return Promise.resolve(apiResponse)
     })
   })
   lab.afterEach(() => {
@@ -46,17 +36,24 @@ lab.experiment('imtd processing', () => {
   })
 
   lab.test('imtd process latest.json stations length over 50', async () => {
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve({ Body: maxStations })
+    sinon.stub(axios, 'get').callsFake(() => {
+      return Promise.resolve(apiResponse)
     })
-
     await handler(event)
   })
 
-  lab.test('imtd process S3 error', async () => {
-    s3.getObject = () => {
-      return Promise.reject(new Error('test error'))
+  lab.test('imtd process axios error', async () => {
+    sinon.stub(axios, 'get').rejects(new Error('Fake error'))
+
+    try {
+      await handler(event)
+      Code.fail('Expected an error to be thrown')
+    } catch (error) {
+      Code.expect(error).to.be.an.error(Error)
     }
-    await Code.expect(handler(event)).to.reject()
+  })
+  lab.test('imtd process axios returns a 404', async () => {
+    sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
+    await handler(event)
   })
 })
