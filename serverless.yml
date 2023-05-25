@@ -62,9 +62,3 @@ functions:
     timeout: 120
     memorySize: 2048
     reservedConcurrency: 20
-  imtdFileCreateProcess:
-    name: ${env:LFW_DATA_TARGET_ENV_NAME}${self:service}-imtdFileCreateProcess
-    handler: lib/functions/imtd-create-file-process.handler
-    timeout: 120
-    memorySize: 2048
-    reservedConcurrency: 20
