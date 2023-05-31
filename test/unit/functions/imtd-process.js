@@ -3,11 +3,13 @@
 const Lab = require('@hapi/lab')
 const lab = (exports.lab = Lab.script())
 const Code = require('@hapi/code')
-const handler = require('../../../lib/functions/imtd-process').handler
 const event = require('../../events/imtd-event.json')
 const stations = require('../../data/imtd-stations').stations
 const apiResponse = require('../../data/imtd-stations').apiResponse
 const axios = require('axios')
+const proxyquire = require('proxyquire')
+
+const { handler } = require('../../../lib/functions/imtd-process')
 
 const { Pool } = require('pg')
 
@@ -21,7 +23,7 @@ lab.experiment('imtd processing', () => {
     sinon.stub(Pool.prototype, 'connect').callsFake(() => {
       return Promise.resolve({
         query: sinon.stub().resolves({}),
-        release: sinon.stub().resolves({})
+        release: sinon.stub()
       })
     })
     sinon.stub(Pool.prototype, 'query').callsFake(() => {
@@ -40,6 +42,40 @@ lab.experiment('imtd processing', () => {
       return Promise.resolve(apiResponse)
     })
     await handler(event)
+  })
+
+  lab.test('imtd process should handle response with no thresholds', async () => {
+    const apiResponse = {
+      status: 200,
+      statusText: 'OK',
+      data: [
+        {
+          RLOIid: '1165',
+          wiskiID: '254290001',
+          telemetryID: 'E10023',
+          Name: 'Tanbridge GS',
+          TimeSeriesMetaData: []
+        }
+      ]
+    }
+
+    const axiosStub = sinon.stub(axios, 'get').callsFake(() => {
+      return Promise.resolve(apiResponse)
+    })
+
+    const log = {
+      info: sinon.spy(),
+      error: sinon.spy()
+    }
+
+    const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+      '../helpers/logging': log
+    })
+    await handler(event)
+    Code.expect(axiosStub.callCount).to.equal(8)
+    Code.expect(log.error.callCount).to.equal(1)
+    Code.expect(log.error.args.length).to.equal(1)
+    Code.expect(log.error.args[0]).to.equal(['Error:', 'Empty array'])
   })
 
   lab.test('imtd process axios error', async () => {
