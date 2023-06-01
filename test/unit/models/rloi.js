@@ -34,6 +34,7 @@ function getStubbedDbHelper () {
     .resolves({ rows: [{ telemetry_value_parent_id: 1 }] })
     .withArgs(stationSchemaQueryMatcher, stationSchemaVarsMatcher)
     .resolves()
+
   return client
 }
 

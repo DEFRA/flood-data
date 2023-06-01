@@ -1,71 +1,80 @@
-// // TODO commenting out to get tests to pass, test needs to be updated to deal with alpha change to cut out all forecast values but 36 hours from now
-// 'use strict'
+'use strict'
+// ******* SETUP *******
+// ***** Libraries *****
+const Lab = require('@hapi/lab')
+const LambdaTester = require('lambda-tester')
+const Code = require('@hapi/code')
+const proxyquire = require('proxyquire').noCallThru()
+const path = require('path')
+const fs = require('fs')
+const AWS = require('aws-sdk')
+const sinon = require('sinon').createSandbox()
 
-// const Lab = require('@hapi/lab')
-// const lab = exports.lab = Lab.script()
-// const fs = require('fs')
-// const Code = require('@hapi/code')
-// const s3 = new (require('../../lib/helpers/s3'))()
-// const xml = fs.readFileSync('./test/data/ffoi-test.xml')
+const lab = exports.lab = Lab.script()
 
-// lab.experiment('Test Lambda functionality post deployment', () => {
-//   lab.before(async () => {
-//     // load the test.XML file
-//     const params = {
-//       Body: xml,
-//       Bucket: process.env.LFW_DATA_SLS_BUCKET,
-//       Key: 'fwfidata/ENT_7024/test.XML'
-//     }
-//     console.log('putObject: ' + params.Key)
-//     await s3.putObject(params)
-//     // give lambda time to process the file
-//     console.log('File loaded')
-//     console.log('Pause 5 seconds')
-//     await new Promise((resolve, reject) => {
-//       setTimeout(resolve, 5000)
-//     })
-//     console.log('Pause finished')
-//   })
+// ***** Local Imports *****
+const createPGClientWithRetry = require('../../lib/helpers/retry-db-connection')
 
-//   lab.after(async () => {
-//     // delete the test files
-//     try {
-//       await s3.deleteObject({ Bucket: process.env.LFW_DATA_SLS_BUCKET, Key: 'fwfidata/ENT_7024/test.XML' })
-//       console.log('Deleted: test.XML')
-//       for (let i = 1; i <= 10; i++) {
-//         await s3.deleteObject({ Bucket: process.env.LFW_DATA_SLS_BUCKET, Key: 'ffoi/test' + i + '.json' })
-//         console.log('Deleted: test' + i + '.json')
-//       }
-//     } catch (err) {
-//       Code.expect(err).to.be.null()
-//       throw err
-//     }
-//   })
+const s3Client = new AWS.S3({
+  accessKeyId: process.env.LOCAL_TEST_ACCESS_KEY, // Replace with your access key ID
+  secretAccessKey: process.env.LOCAL_TEST_ACCESS_SECRET, // Replace with your secret access key
+  endpoint: process.env.LOCAL_TEST_ENDPOINT,
+  s3ForcePathStyle: process.env.LOCAL_TEST_STYLE_PATH, // Required for S3 Ninja
+  signatureVersion: process.env.LOCAL_TEST_VERSION
+})
 
-//   lab.test('process', async () => {
-//     // Confirm that the file has produced 10 test files
-//     try {
-//       for (let i = 1; i <= 10; i++) {
-//         let data
-//         if (i === 1) {
-//           try {
-//             data = await s3.getObject({ Bucket: process.env.LFW_DATA_SLS_BUCKET, Key: 'ffoi/test' + i + '.json' })
-//           } catch (err) {
-//             // test1.json shouldn't exist as it is non water level
-//             Code.expect(err).to.be.an.error()
-//           }
-//         } else {
-//           data = await s3.getObject({ Bucket: process.env.LFW_DATA_SLS_BUCKET, Key: 'ffoi/test' + i + '.json' })
-//           Code.expect(data).to.not.be.null()
-//           const ffoi = JSON.parse(data.Body)
-//           Code.expect(ffoi.$.stationReference).to.equal('test' + i)
-//           Code.expect(ffoi.SetofValues.length).to.be.greaterThan(0)
-//           console.log('Tested: test' + i + '.json')
-//         }
-//       }
-//     } catch (err) {
-//       Code.expect(err).to.be.null()
-//       throw err
-//     }
-//   })
-// })
+const LFW_DATA_SLS_BUCKET = 'bucket'
+
+lab.experiment('Test ffoiProcess lambda invoke', { timeout: 999999000 }, () => {
+  let lambda
+  /** @type {PostgresClient} */
+  let client
+
+  lab.beforeEach(async function () {
+    process.env.LFW_DATA_SLS_BUCKET = LFW_DATA_SLS_BUCKET
+    process.env.NODE_ENV = 'LOCAL_TEST'
+    process.env.LFW_DATA_DB_CONNECTION = 'postgresql://postgres:fr24Password@localhost:5432/flooddev'
+    lambda = proxyquire('../../lib/functions/ffoi-process', {})
+    /** @type {PostgresClient} */
+    client = await createPGClientWithRetry(0)
+  })
+
+  lab.afterEach(async function () {
+    sinon.restore()
+  })
+
+  lab.test('should upload data to S3 and update the database', async () => {
+    const bucketName = LFW_DATA_SLS_BUCKET
+    const key = 'rloi/rloiStationData.xml'
+    const rloiFileTestPath = path.join(__dirname, '../data/ffoi-test-no-water-level.xml')
+
+    const s3Data = fs.readFileSync(rloiFileTestPath).toString()
+
+    await s3Client.upload({
+      Body: s3Data,
+      Bucket: bucketName,
+      Key: key
+    }).promise()
+
+    const event = {
+      Records: [{ s3: { object: { key }, bucket: { name: bucketName } } }]
+    }
+
+    await LambdaTester(lambda.handler)
+      .event(event)
+      .expectResult(async (lambdaResponse) => {
+        // Verify that the data was uploaded to S3
+        for (let i = 0; i < lambdaResponse.length; i += 2) {
+          const s3Data = await s3Client.getObject({ Bucket: bucketName, Key: lambdaResponse[i].Key }).promise()
+          Code.expect(s3Data).to.exist()
+        }
+
+        // Verify that the data was inserted into the database
+        for (let i = 1; i < lambdaResponse.length; i += 2) {
+          const telemetryId = lambdaResponse[i].rows[0].telemetry_id
+          const dbData = await client.query('SELECT * FROM u_flood.ffoi_max WHERE telemetry_id = $1', [telemetryId])
+          Code.expect(dbData.rows[0]).to.exist()
+        }
+      })
+  })
+})

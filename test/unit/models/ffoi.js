@@ -15,7 +15,7 @@ const sinon = require('sinon').createSandbox()
 
 lab.experiment('ffoi model', () => {
   lab.beforeEach(() => {
-    sinon.stub(s3, 'putObject').callsFake((params) => {
+    sinon.stub(s3, 'upload').callsFake((params) => {
       return Promise.resolve({})
     })
   })
@@ -27,7 +27,7 @@ lab.experiment('ffoi model', () => {
 
   lab.test('FFOI happy process', async () => {
     sinon.restore()
-    sinon.stub(s3, 'putObject').callsFake((params) => {
+    sinon.stub(s3, 'upload').callsFake((params) => {
       let result = s3PutSchema.validate(params)
       Code.expect(result.error).to.be.undefined()
       const file = JSON.parse(params.Body)
@@ -41,7 +41,7 @@ lab.experiment('ffoi model', () => {
 
   lab.test('FFOI old file no useful values', async () => {
     sinon.restore()
-    sinon.stub(s3, 'putObject').callsFake((params) => {
+    sinon.stub(s3, 'upload').callsFake((params) => {
       let result = s3PutSchema.validate(params)
       Code.expect(result.error).to.be.null()
       const file = JSON.parse(params.Body)
@@ -55,7 +55,7 @@ lab.experiment('ffoi model', () => {
 
   lab.test('S3 put error', async () => {
     sinon.restore()
-    sinon.stub(s3, 'putObject').callsFake((params) => {
+    sinon.stub(s3, 'upload').callsFake((params) => {
       return Promise.reject(new Error('test error'))
     })
     const file = await util.parseXml(fs.readFileSync('./test/data/ffoi-test.xml'))
