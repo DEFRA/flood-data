@@ -1,22 +1,35 @@
 'use strict'
 const Lab = require('@hapi/lab')
 const lab = exports.lab = Lab.script()
-const AWS = require('aws-sdk')
-AWS.config.update({ region: process.env.LFW_DATA_TARGET_REGION })
-const lambda = new AWS.Lambda()
+const Code = require('@hapi/code')
+const LambdaTester = require('lambda-tester')
+const proxyquire = require('proxyquire').noCallThru()
 
-lab.experiment('Test fwisProcess lambda invoke', () => {
-  lab.test('fwisProcess invoke', async () => {
-    const data = await lambda.invoke({
-      FunctionName: `${process.env.LFW_DATA_TARGET_ENV_NAME}${process.env.LFW_DATA_SERVICE_CODE}-fwisProcess`
-    }).promise()
+const LFW_DATA_SLS_BUCKET = 'sls-bucket'
 
-    if (data.StatusCode !== 200) {
-      throw new Error('fwisProcess non 200 response')
-    }
-    const payload = JSON.parse(data.Payload)
-    if (payload && payload.errorMessage) {
-      throw new Error('fwisProcess error returned: ' + payload.errorMessage)
-    }
+lab.experiment('Test fgsProcess lambda invoke', () => {
+  let lambda
+
+  lab.beforeEach(function () {
+    process.env.LFW_DATA_SLS_BUCKET = LFW_DATA_SLS_BUCKET
+    process.env.NODE_ENV = 'LOCAL_TEST'
+    lambda = proxyquire('../../lib/functions/fgs-process', {})
+  })
+
+  lab.test('The fgsProcess is invoked to verify whether the Lambda function is correctly uploading stations using the appropriate key and bucket.', async () => {
+    await LambdaTester(lambda.handler)
+      .event({})
+      .expectResult((lambdaResponse) => {
+        lambdaResponse.forEach((data, idx) => {
+          if (idx === 0) {
+            const containsNumber = /\d/.test(data.Key)
+            Code.expect(containsNumber).to.equal(true)
+          } else {
+            Code.expect(data.Key).to.equal('fgs/latest.json')
+          }
+
+          Code.expect(data.Bucket).to.equal(LFW_DATA_SLS_BUCKET)
+        })
+      })
   })
 })

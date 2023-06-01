@@ -11,7 +11,7 @@ lab.experiment('matchers', () => {
   // Note: these tests are testing code used in the rloi.js unit tests to match and assert on args
   // passed to db.query()
   lab.test('valueParentSchemaQueryMatcher should match', async () => {
-    const query = 'INSERT INTO sls_telemetry_value_parent(filename, imported, rloi_id, station, region, start_timestamp, end_timestamp, parameter, qualifier, units, post_process, subtract, por_max_value, station_type, percentile_5) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING telemetry_value_parent_id'
+    const query = 'INSERT INTO u_flood.sls_telemetry_value_parent(filename, imported, rloi_id, station, region, start_timestamp, end_timestamp, parameter, qualifier, units, post_process, subtract, por_max_value, station_type, percentile_5) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING telemetry_value_parent_id'
     Code.expect(valueParentSchemaQueryMatcher.test(query)).to.be.true()
   })
 

@@ -1,0 +1,10 @@
+<?xml version="1.0" standalone="yes"?>
+<EATimeSeriesDataExchangeFormat xmlns="http://www.environment-agency.gov.uk/XMLSchemas/EATimeSeriesDataExchangeFormat" xmlns:md="http://www.environment-agency.gov.uk/XMLSchemas/EAMetadataFormat" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.environment-agency.gov.uk/XMLSchemas/EATimeSeriesDataExchangeFormat EATimeSeriesDataExchangeFormat.xsd">
+	<md:Publisher>Environment Agency</md:Publisher>
+	<md:Source>EA South East Regional Telemetry System</md:Source>
+	<md:Description>Automated telemetry data export process</md:Description>
+	<md:Creator>SCX 6</md:Creator>
+	<md:Date>2018-06-29</md:Date>
+	<md:Time>11:03:48</md:Time>
+	<md:Identifier>SEKMHSCXAS1</md:Identifier>
+</EATimeSeriesDataExchangeFormat>

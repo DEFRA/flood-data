@@ -18,5 +18,5 @@ module.exports = {
     Joi.string(),
     Joi.number()
   ),
-  query: Joi.string().required().regex(/\bINSERT INTO sls_telemetry_value_parent/)
+  query: Joi.string().required().regex(/\bINSERT INTO u_flood.sls_telemetry_value_parent/)
 }
