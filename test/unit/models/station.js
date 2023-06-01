@@ -14,7 +14,7 @@ const sinon = require('sinon').createSandbox()
 lab.experiment('station model', () => {
   lab.beforeEach(() => {
     // setup mocks
-    sinon.stub(s3, 'putObject').callsFake(() => {
+    sinon.stub(s3, 'upload').callsFake(() => {
       return Promise.resolve({ ETag: '"47f693afd590c0b546bc052f6cfb4b71"' })
     })
     sinon.stub(Client.prototype, 'connect').callsFake(() => {
@@ -50,9 +50,9 @@ lab.experiment('station model', () => {
     process.env.stage = stage
   })
 
-  lab.test('s3 putobject error', async () => {
-    s3.putObject.restore()
-    sinon.stub(s3, 'putObject').callsFake((params) => {
+  lab.test('s3 upload error', async () => {
+    s3.upload.restore()
+    sinon.stub(s3, 'upload').callsFake((params) => {
       return new Promise((resolve, reject) => {
         if (params.Key.indexOf('stations.json') > -1) {
           return resolve({ ETag: '"47f693afd590c0b546bc052f6cfb4b71"' })
