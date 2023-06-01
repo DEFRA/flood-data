@@ -18,7 +18,7 @@ lab.experiment('fgs process', () => {
   })
 
   lab.test('fgs process', async () => {
-    const putObject = sinon.stub(s3, 'putObject').callsFake((params) => {
+    const upload = sinon.stub(s3, 'upload').callsFake((params) => {
       Code.expect(params.Body).to.equal(JSON.stringify({ id: 'test' }))
       Code.expect(params.Key).to.include('fgs/').and.to.include('.json')
       return Promise.resolve({})
@@ -33,12 +33,12 @@ lab.experiment('fgs process', () => {
     })
 
     await handler()
-    sinon.assert.calledTwice(putObject)
+    sinon.assert.calledTwice(upload)
     sinon.assert.calledOnce(request)
   })
 
   lab.test('s3 error', async () => {
-    sinon.stub(s3, 'putObject').callsFake(() => {
+    sinon.stub(s3, 'upload').callsFake(() => {
       return Promise.reject(new Error('test error'))
     })
     sinon.stub(wreck, 'request').callsFake(() => {
