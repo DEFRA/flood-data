@@ -97,9 +97,27 @@ lab.experiment('imtd processing 2', () => {
   })
 
   lab.test('imtd process axios returns a 404', async () => {
-    const { query: queryStub } = setupStdDbStubs()
+    const stationIds = {
+      rows: [
+        { rloi_id: 1001 }
+      ]
+    }
+    const { query: queryStub } = setupStdDbStubs(stationIds)
     sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
+    const log = {
+      info: sinon.spy(),
+      error: sinon.spy()
+    }
+
+    const { handler } = proxyquire('../../../lib/functions/imtd-process-2', {
+      '../helpers/logging': log
+    })
     await handler(event)
+
+    Code.expect(log.error.callCount).to.equal(1)
+    Code.expect(log.error.args.length).to.equal(1)
+    Code.expect(log.error.args[0]).to.equal(['failed to get response for 1001'])
+
     const calls = queryStub.getCalls()
     Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
     Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
