@@ -1,5 +1,3 @@
-'use strict'
-
 const Lab = require('@hapi/lab')
 const lab = (exports.lab = Lab.script())
 const Code = require('@hapi/code')
@@ -9,15 +7,12 @@ const stations = require('../../data/imtd-stations').stations
 const apiResponse = require('../../data/imtd-stations').apiResponse
 const axios = require('axios')
 
-const { Pool } = require('pg')
-
-// start up Sinon sandbox
 const sinon = require('sinon').createSandbox()
+const { Pool } = require('pg')
 
 lab.experiment('imtd processing', () => {
   lab.beforeEach(async () => {
     process.env.LFW_DATA_DB_CONNECTION = ''
-    // setup mocks
     sinon.stub(Pool.prototype, 'connect').callsFake(() => {
       return Promise.resolve({
         query: sinon.stub().resolves({}),
@@ -35,11 +30,12 @@ lab.experiment('imtd processing', () => {
     sinon.restore()
   })
 
-  lab.test('imtd process latest.json stations length over 50', async () => {
-    sinon.stub(axios, 'get').callsFake(() => {
-      return Promise.resolve(apiResponse)
-    })
+  lab.test('imtd process api called expected number of times', async () => {
+    const axiosGetStub = sinon.stub(axios, 'get').resolves(apiResponse)
     await handler(event)
+
+    // Assert the number of times the API was called
+    Code.expect(axiosGetStub.callCount).to.equal(stations.rows.length)
   })
 
   lab.test('imtd process axios error', async () => {
@@ -52,6 +48,7 @@ lab.experiment('imtd processing', () => {
       Code.expect(error).to.be.an.error(Error)
     }
   })
+
   lab.test('imtd process axios returns a 404', async () => {
     sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
     await handler(event)
