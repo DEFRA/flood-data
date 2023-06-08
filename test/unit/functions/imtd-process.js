@@ -26,6 +26,7 @@ lab.experiment('imtd processing', () => {
       return Promise.resolve({})
     })
   })
+
   lab.afterEach(() => {
     sinon.restore()
   })
@@ -50,7 +51,16 @@ lab.experiment('imtd processing', () => {
   })
 
   lab.test('imtd process axios returns a 404', async () => {
-    sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
-    await handler(event)
+    const error = new Error('Fake error')
+    error.response = { status: 404 }
+    sinon.stub(axios, 'get').rejects(error)
+
+    try {
+      await handler(event)
+      Code.fail('Expected an error to be thrown')
+    } catch (error) {
+      Code.expect(error).to.be.an.error(Error)
+      Code.expect(error.response.status).to.equal(404)
+    }
   })
 })
