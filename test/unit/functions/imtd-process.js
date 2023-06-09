@@ -1,66 +1,132 @@
+'use strict'
+
 const Lab = require('@hapi/lab')
 const lab = (exports.lab = Lab.script())
 const Code = require('@hapi/code')
-const handler = require('../../../lib/functions/imtd-process').handler
 const event = require('../../events/imtd-event.json')
-const stations = require('../../data/imtd-stations').stations
-const apiResponse = require('../../data/imtd-stations').apiResponse
+const testStations = require('../../data/imtd-stations').stations
+const testApiResponse = require('../../data/imtd-stations').apiResponse
 const axios = require('axios')
+const proxyquire = require('proxyquire')
 
-const sinon = require('sinon').createSandbox()
+const { handler } = require('../../../lib/functions/imtd-process')
+
 const { Pool } = require('pg')
+
+// start up Sinon sandbox
+const sinon = require('sinon').createSandbox()
+
+function setupStdDbStubs (test) {
+  const stations = test || testStations
+  const connect = sinon.stub(Pool.prototype, 'connect').resolves({
+    query: sinon.stub().resolves({}),
+    release: sinon.stub()
+  })
+  const query = sinon.stub(Pool.prototype, 'query').resolves(stations)
+  const end = sinon.stub(Pool.prototype, 'end').resolves(stations)
+
+  return {
+    connect,
+    query,
+    end
+  }
+}
+
+function setupAxiosStdStub (response = testApiResponse) {
+  return sinon.stub(axios, 'get').resolves(response)
+}
 
 lab.experiment('imtd processing', () => {
   lab.beforeEach(async () => {
     process.env.LFW_DATA_DB_CONNECTION = ''
-    sinon.stub(Pool.prototype, 'connect').callsFake(() => {
-      return Promise.resolve({
-        query: sinon.stub().resolves({}),
-        release: sinon.stub().resolves({})
-      })
-    })
-    sinon.stub(Pool.prototype, 'query').callsFake(() => {
-      return Promise.resolve(stations)
-    })
-    sinon.stub(Pool.prototype, 'end').callsFake(() => {
-      return Promise.resolve({})
-    })
   })
-
   lab.afterEach(() => {
     sinon.restore()
   })
 
-  lab.test('imtd process api called expected number of times', async () => {
-    const axiosGetStub = sinon.stub(axios, 'get').resolves(apiResponse)
+  lab.test('imtd process latest.json stations', async () => {
+    setupStdDbStubs()
+    setupAxiosStdStub()
     await handler(event)
-
-    // Assert the number of times the API was called
-    Code.expect(axiosGetStub.callCount).to.equal(stations.rows.length)
   })
 
-  lab.test('imtd process axios error', async () => {
-    sinon.stub(axios, 'get').rejects(new Error('Fake error'))
-
-    try {
+  lab.experiment('response with thresholds', () => {
+    lab.test('it should call axios 8 times', async () => {
+      setupStdDbStubs()
+      const axiosStub = setupAxiosStdStub()
       await handler(event)
-      Code.fail('Expected an error to be thrown')
-    } catch (error) {
-      Code.expect(error).to.be.an.error(Error)
-    }
+      // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
+      /// 48 inserts + 1 select and 8 drops = 57
+      Code.expect(axiosStub.callCount).to.equal(8)
+    })
+    lab.test('it should call the db 57 times', async () => {
+      const { query: queryStub } = setupStdDbStubs()
+      setupAxiosStdStub()
+      await handler(event)
+      // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
+      /// 48 inserts + 1 select and 8 drops = 57
+      const calls = queryStub.getCalls()
+      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
+      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(48)
+      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(8)
+      Code.expect(calls.length).to.equal(57)
+    })
+    lab.test('it should get the rivers list first', async () => {
+      const { query: queryStub } = setupStdDbStubs()
+      setupAxiosStdStub()
+      await handler(event)
+      const calls = queryStub.getCalls()
+      Code.expect(calls[0].args.length).to.equal(1)
+      Code.expect(calls[0].args[0]).to.startWith('select distinct rloi_id from rivers_mview')
+    })
+    lab.test('it should get delete existing thresholds before inserting new records', async () => {
+      const stationIds = {
+        rows: [
+          { rloi_id: 1001 },
+          { rloi_id: 1002 }
+        ]
+      }
+      const { query: queryStub } = setupStdDbStubs(stationIds)
+      setupAxiosStdStub()
+      await handler(event)
+      const calls = queryStub.getCalls()
+      Code.expect(calls.length).to.equal(15)
+      Code.expect(calls[1].args.length).to.equal(2)
+      Code.expect(calls[1].args).to.equal(['DELETE FROM u_flood.station_imtd_threshold WHERE station_id = $1', [1001]])
+      Code.expect(calls[3].args).to.equal(['INSERT INTO station_imtd_threshold (station_id, fwis_code, fwis_type, direction, value) SELECT $1, $2, $3, $4, $5 WHERE NOT EXISTS (SELECT 1 FROM station_imtd_threshold WHERE station_id = $1 AND fwis_code = $2 AND fwis_type = $3 AND direction = $4 AND value = $5);', [1001, '065WAF423', 'A', 'u', 33.4]])
+    })
   })
 
   lab.test('imtd process axios returns a 404', async () => {
+    const test = {
+      rows: [
+        { rloi_id: 1001 }
+      ]
+    }
+    const { query: queryStub } = setupStdDbStubs(test)
     const error = new Error('Fake error')
     error.response = { status: 404 }
     sinon.stub(axios, 'get').rejects(error)
+    const log = {
+      info: sinon.spy(),
+      error: sinon.spy()
+    }
+    const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+      '../helpers/logging': log
+    })
 
     try {
       await handler(event)
       Code.fail('Expected an error to be thrown')
     } catch (error) {
       Code.expect(error).to.be.an.error(Error)
-      Code.expect(error.response.status).to.equal(404)
+      Code.expect(log.error.args[0][0]).to.equal('Failed to get response for 1001:')
     }
+
+    const calls = queryStub.getCalls()
+    Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
+    Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
+    Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
+    Code.expect(calls.length).to.equal(1)
   })
 })
