@@ -108,17 +108,16 @@ lab.experiment('imtd processing', () => {
       const error = new Error('error')
       error.response = { status: 404 }
       sinon.stub(axios, 'get').rejects(error)
-      const log = {
-        info: sinon.spy(),
-        error: sinon.spy()
+      const logger = {
+        log: sinon.spy()
       }
       const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': log
+        '../helpers/logging': logger
       })
 
       await handler(event)
 
-      Code.expect(log.error.args[0][0]).to.equal('Failed to get response for 1001:')
+      Code.expect(logger.log.args[0][0]).to.equal('Station 1001 not found in IMTD (HTTP Status: 404)')
 
       const calls = queryStub.getCalls()
       Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
@@ -137,18 +136,18 @@ lab.experiment('imtd processing', () => {
       error.response = { status: 500 }
       const axiosStub = setupAxiosStdStub()
       axiosStub.rejects(error)
-      const log = {
-        info: sinon.spy(),
+      const logger = {
+        log: sinon.spy(),
         error: sinon.spy()
       }
       const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': log
+        '../helpers/logging': logger
       })
 
       const returnedError = await Code.expect(handler()).to.reject()
       Code.expect(returnedError.message).to.equal('Request to IMTD API failed for RLOI id 1001 (status: 500)')
 
-      const logErrorCalls = log.error.getCalls()
+      const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(0)
 
       const calls = queryStub.getCalls()
