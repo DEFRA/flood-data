@@ -51,8 +51,19 @@ lab.experiment('imtd processing', () => {
   })
 
   lab.experiment('happy path', () => {
-    lab.experiment('response with thresholds', () => {
-      lab.test('it should call axios 8 times', async () => {
+    lab.experiment('IMTD response without thresholds', () => {
+      lab.test('it should handle a response with no thresholds', { todo: true }, async () => {
+      })
+    })
+    lab.experiment('IMTD response with thresholds', () => {
+      lab.test('it should query for RLOI ids once', async () => {
+        const { query: queryStub } = setupStdDbStubs()
+        setupAxiosStdStub()
+        await handler(event)
+        const calls = queryStub.getCalls()
+        Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
+      })
+      lab.test('it should call axios once per station', async () => {
         setupStdDbStubs()
         const axiosStub = setupAxiosStdStub()
         await handler(event)
@@ -60,17 +71,24 @@ lab.experiment('imtd processing', () => {
         /// 48 inserts + 1 select and 8 drops = 57
         Code.expect(axiosStub.callCount).to.equal(8)
       })
-      lab.test('it should call the db 57 times', async () => {
+      lab.test('it should delete thresholds once per station', async () => {
         const { query: queryStub } = setupStdDbStubs()
         setupAxiosStdStub()
         await handler(event)
         // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
         /// 48 inserts + 1 select and 8 drops = 57
         const calls = queryStub.getCalls()
-        Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
-        Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(48)
         Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(8)
         Code.expect(calls.length).to.equal(57)
+      })
+      lab.test('it should insert thresholds for each station', async () => {
+        const { query: queryStub } = setupStdDbStubs()
+        setupAxiosStdStub()
+        await handler(event)
+        // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
+        /// 48 inserts
+        const calls = queryStub.getCalls()
+        Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(48)
       })
       lab.test('it should get the rivers list first', async () => {
         const { query: queryStub } = setupStdDbStubs()
@@ -153,6 +171,10 @@ lab.experiment('imtd processing', () => {
       Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
       Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
       Code.expect(calls.length).to.equal(1)
+    })
+    lab.test('it should throw an error when IMTD response is not parsable', { todo: true }, async () => {
+    })
+    lab.test('it should throw an error when DB connection fails', { todo: true }, async () => {
     })
   })
 })
