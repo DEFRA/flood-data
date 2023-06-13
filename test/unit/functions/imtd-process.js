@@ -126,5 +126,36 @@ lab.experiment('imtd processing', () => {
       Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
       Code.expect(calls.length).to.equal(1)
     })
+    lab.test('imtd process should throw an error when API returns a status which is an error and not a 404', async () => {
+      const test = {
+        rows: [
+          { rloi_id: 1001 }
+        ]
+      }
+      const { query: queryStub } = setupStdDbStubs(test)
+      const error = new Error('error')
+      error.response = { status: 500 }
+      const axiosStub = setupAxiosStdStub()
+      axiosStub.rejects(error)
+      const log = {
+        info: sinon.spy(),
+        error: sinon.spy()
+      }
+      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+        '../helpers/logging': log
+      })
+
+      const returnedError = await Code.expect(handler()).to.reject()
+      Code.expect(returnedError.message).to.equal('Request to IMTD API failed for RLOI id 1001 (status: 500)')
+
+      const logErrorCalls = log.error.getCalls()
+      Code.expect(logErrorCalls.length).to.equal(0)
+
+      const calls = queryStub.getCalls()
+      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
+      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
+      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
+      Code.expect(calls.length).to.equal(1)
+    })
   })
 })
