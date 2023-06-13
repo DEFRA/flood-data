@@ -52,8 +52,7 @@ lab.experiment('imtd processing', () => {
 
   lab.experiment('happy path', () => {
     lab.experiment('IMTD response without thresholds', () => {
-      lab.test('it should handle a response with no thresholds', { todo: true }, async () => {
-      })
+      lab.test('it should handle a response with no thresholds (TODO)')
     })
     lab.experiment('IMTD response with thresholds', () => {
       lab.test('it should query for RLOI ids once', async () => {
@@ -172,9 +171,7 @@ lab.experiment('imtd processing', () => {
       Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
       Code.expect(calls.length).to.equal(1)
     })
-    lab.test('it should throw an error when IMTD response is not parsable', { todo: true }, async () => {
-    })
-    lab.test('it should throw an error when DB connection fails', { todo: true }, async () => {
-    })
+    lab.test('it should throw an error when IMTD response is not parsable (TODO)')
+    lab.test('it should throw an error when DB connection fails (TODO)')
   })
 })
