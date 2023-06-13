@@ -97,36 +97,34 @@ lab.experiment('imtd processing', () => {
     })
   })
 
-  lab.test('imtd process axios returns a 404', async () => {
-    const test = {
-      rows: [
-        { rloi_id: 1001 }
-      ]
-    }
-    const { query: queryStub } = setupStdDbStubs(test)
-    const error = new Error('Fake error')
-    error.response = { status: 404 }
-    sinon.stub(axios, 'get').rejects(error)
-    const log = {
-      info: sinon.spy(),
-      error: sinon.spy()
-    }
-    const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-      '../helpers/logging': log
-    })
+  lab.experiment('sad path', () => {
+    lab.test('imtd process should log an error when API returns 404 for a given RLOI id', async () => {
+      const test = {
+        rows: [
+          { rloi_id: 1001 }
+        ]
+      }
+      const { query: queryStub } = setupStdDbStubs(test)
+      const error = new Error('error')
+      error.response = { status: 404 }
+      sinon.stub(axios, 'get').rejects(error)
+      const log = {
+        info: sinon.spy(),
+        error: sinon.spy()
+      }
+      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+        '../helpers/logging': log
+      })
 
-    try {
       await handler(event)
-      Code.fail('Expected an error to be thrown')
-    } catch (error) {
-      Code.expect(error).to.be.an.error(Error)
-      Code.expect(log.error.args[0][0]).to.equal('Failed to get response for 1001:')
-    }
 
-    const calls = queryStub.getCalls()
-    Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
-    Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
-    Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
-    Code.expect(calls.length).to.equal(1)
+      Code.expect(log.error.args[0][0]).to.equal('Failed to get response for 1001:')
+
+      const calls = queryStub.getCalls()
+      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
+      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
+      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
+      Code.expect(calls.length).to.equal(1)
+    })
   })
 })
