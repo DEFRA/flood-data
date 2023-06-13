@@ -105,9 +105,7 @@ lab.experiment('imtd processing', () => {
         ]
       }
       const { query: queryStub } = setupStdDbStubs(test)
-      const error = new Error('error')
-      error.response = { status: 404 }
-      sinon.stub(axios, 'get').rejects(error)
+      sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
       const logger = {
         log: sinon.spy()
       }
@@ -132,10 +130,8 @@ lab.experiment('imtd processing', () => {
         ]
       }
       const { query: queryStub } = setupStdDbStubs(test)
-      const error = new Error('error')
-      error.response = { status: 500 }
       const axiosStub = setupAxiosStdStub()
-      axiosStub.rejects(error)
+      axiosStub.rejects({ response: { status: 500 } })
       const logger = {
         log: sinon.spy(),
         error: sinon.spy()
