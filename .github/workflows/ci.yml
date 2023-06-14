@@ -32,6 +32,10 @@ jobs:
                 docker-compose -f "docker-compose.yml" up -d --build -T
               working-directory: .
 
+            - name: see dir list
+              run: cd ./test
+              working-directory: .
+
             - name: migrate:tests
               run: npm run migrate:tests
               working-directory: .
