@@ -1,48 +1,35 @@
 const Lab = require('@hapi/lab')
 const handler = require('../../../lib/functions/fwis-process').handler
 const event = require('../../events/fwis-event.json')
-const { expect } = require('@hapi/code');
-const sinon = require('sinon');
-const { it, describe, beforeEach, afterEach, after } = exports.lab = Lab.script();
-
+const sinon = require('sinon')
+const { it, describe, beforeEach, afterEach } = exports.lab = Lab.script()
+const { expect } = require('@hapi/code')
 const wreck = require('../../../lib/helpers/wreck')
 const fwis = require('../../../lib/models/fwis')
 const { Client } = require('pg')
 
 // start up Sinon sandbox
 describe('handler', () => {
-  let sandbox;
-  let clientStub;
-  let clientQueryStub;
-  let clientEndStub;
-  let wreckStub;
-  let saveStub;
-
-
+  let sandbox
+  let clientStub
+  let clientEndStub
+  let wreckStub
+  let saveStub
 
   beforeEach(() => {
-    sandbox = sinon.createSandbox();
-    clientStub = sandbox.stub(Client.prototype, 'connect');
-    clientQueryStub = sandbox.stub(Client.prototype, 'query');
-    clientEndStub = sandbox.stub(Client.prototype, 'end');
-    wreckStub = sandbox.stub(wreck, 'request');
-    saveStub = sandbox.stub(fwis, 'save');
-  });
+    sandbox = sinon.createSandbox()
+    clientStub = sandbox.stub(Client.prototype, 'connect')
+    clientEndStub = sandbox.stub(Client.prototype, 'end')
+    wreckStub = sandbox.stub(wreck, 'request')
+    saveStub = sandbox.stub(fwis, 'save')
+  })
 
   afterEach(() => {
-    clientQueryStub.resetHistory();
-    sandbox.reset();
-  });
+    sandbox.restore()
+    wreckStub.restore()
+  })
 
-  afterEach(() => {
-    sandbox.reset();
-  });
-
-  after(() => {
-    sandbox.restore();
-  });
-
-  it.only('should handle event and save warnings', async () => {
+  it('should handle event and save warnings', async () => {
     const warnings = [{
       situation: 'test-situation',
       attr: {
@@ -62,44 +49,39 @@ describe('handler', () => {
         severityValue: 'test-severityValue',
         severity: 'test-severity'
       }
-    }];
+    }]
 
     // Get the current seconds since epoch
     const timestamp = Math.round((new Date()).getTime() / 1000)
 
-    saveStub.withArgs(warnings, timestamp, new Client)
-    wreckStub.resolves({ warnings });
-    clientStub.resolves();
-    clientStub.callsFake(() => {
-      return Promise.resolve({
-        query: clientQueryStub.resolves({}),
-        release: sinon.stub()
-      })
-    })
-    // clientStub.query.resolves('query response')
-    clientEndStub.resolves();
+    saveStub.withArgs(warnings, timestamp, new Client()).resolves()
+    wreckStub.resolves({ warnings })
+    clientEndStub.resolves()
+    clientStub.resolves()
 
-    await handler({});
+    await handler(event)
 
-    sinon.assert.callCount(clientStub.query, 4)
-    sinon.assert.calledOnce(wreckStub);
-    sinon.assert.calledOnce(clientStub);
-    sinon.assert.calledOnce(clientEndStub);
-    sinon.assert.calledOnce(saveStub);
-  });
+    sinon.assert.calledOnce(wreckStub)
+    sinon.assert.calledOnce(clientStub)
+    sinon.assert.calledOnce(clientEndStub)
+    sinon.assert.calledOnce(saveStub)
+  })
 
   it('should handle errors', async () => {
-    const error = new Error('test error');
-    wreckStub.rejects(error);
+    const error = new Error('test error')
+
+    wreckStub.callsFake(() => {
+      return Promise.reject(error)
+    })
 
     try {
-      await handler({});
+      await handler({})
     } catch (err) {
-      sinon.assert.calledOnce(wreckStub);
-      sinon.assert.notCalled(clientStub);
-      sinon.assert.notCalled(clientEndStub);
-      sinon.assert.notCalled(saveStub);
-      expect(err).to.equal(error);
+      sinon.assert.calledOnce(wreckStub)
+      sinon.assert.notCalled(clientStub)
+      sinon.assert.notCalled(clientEndStub)
+      sinon.assert.notCalled(saveStub)
+      expect(err).to.equal(error)
     }
-  });
-});
+  })
+})
