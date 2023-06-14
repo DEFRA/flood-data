@@ -13,11 +13,11 @@ const sinon = require('sinon').createSandbox()
 const lab = exports.lab = Lab.script()
 
 const s3Client = new AWS.S3({
-  accessKeyId: 'AKIAIOSFODNN7EXAMPLE', // Replace with your access key ID
-  secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY', // Replace with your secret access key
-  endpoint: 'http://localhost:9444',
-  s3ForcePathStyle: true, // Required for S3 Ninja
-  signatureVersion: 'v4'
+  accessKeyId: process.env.LOCAL_TEST_ACCESS_KEY, // Replace with your access key ID
+  secretAccessKey: process.env.LOCAL_TEST_ACCESS_SECRET, // Replace with your secret access key
+  endpoint: process.env.LOCAL_TEST_ENDPOINT,
+  s3ForcePathStyle: process.env.LOCAL_TEST_STYLE_PATH, // Required for S3 Ninja
+  signatureVersion: process.env.LOCAL_TEST_VERSION
 })
 
 const LFW_DATA_SLS_BUCKET = 'bucket'
@@ -32,7 +32,6 @@ lab.experiment('Test stationProcess lambda invoke', { timeout: 999999000 }, () =
 
     lambda = proxyquire('../../lib/functions/station-process', {})
   })
-
   lab.afterEach(async function () {
     sinon.restore()
   })

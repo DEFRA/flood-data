@@ -1,55 +1,56 @@
 const Lab = require('@hapi/lab')
-const { it, describe, beforeEach, afterEach } = exports.lab = Lab.script()
-const { expect } = require('@hapi/code')
+const lab = exports.lab = Lab.script()
+const Code = require('@hapi/code')
 const handler = require('../../../lib/functions/fgs-process').handler
 const s3 = require('../../../lib/helpers/s3')
 const wreck = require('../../../lib/helpers/wreck')
-const sinon = require('sinon')
 
-describe('handler', () => {
-  let sandbox
-  let s3Stub
-  let wreckStub
+// start up Sinon sandbox
+const sinon = require('sinon').createSandbox()
 
-  beforeEach(() => {
-    sandbox = sinon.createSandbox()
-    s3Stub = sandbox.stub(s3, 'upload')
-    wreckStub = sandbox.stub(wreck, 'request')
+lab.experiment('fgs process', () => {
+  lab.beforeEach(async () => {
+
   })
 
-  afterEach(() => {
-    sandbox.restore()
+  lab.afterEach(() => {
+    sinon.restore()
   })
 
-  it('should handle event and return result', async () => {
-    const statement = { id: 'test-id', content: 'test-content' }
-    wreckStub.resolves({ statement })
-    s3Stub.resolves('upload response')
-
-    const result = await handler({})
-
-    sinon.assert.calledTwice(s3Stub)
-    sinon.assert.calledOnce(wreckStub)
-    expect(result).to.be.an.array().and.to.have.length(2)
-    expect(result[0]).to.equal('upload response')
-    expect(result[1]).to.equal('upload response')
-  })
-
-  it('should handle errors', async () => {
-    const error = new Error('test error')
-
-    wreckStub.callsFake(() => {
-      return Promise.reject(error)
+  lab.test('fgs process', async () => {
+    const upload = sinon.stub(s3, 'upload').callsFake((params) => {
+      Code.expect(params.Body).to.equal(JSON.stringify({ id: 'test' }))
+      Code.expect(params.Key).to.include('fgs/').and.to.include('.json')
+      return Promise.resolve({})
+    })
+    const request = sinon.stub(wreck, 'request').callsFake(() => {
+      return Promise.resolve({
+        statement:
+        {
+          id: 'test'
+        }
+      })
     })
 
-    try {
-      await handler({})
-    } catch (err) {
-      sinon.assert.notCalled(s3Stub)
-      sinon.assert.calledOnce(wreckStub)
-      expect(err).to.equal(error)
-    }
+    await handler()
+    sinon.assert.calledTwice(upload)
+    sinon.assert.calledOnce(request)
+  })
+
+  lab.test('s3 error', async () => {
+    sinon.stub(s3, 'upload').callsFake(() => {
+      return Promise.reject(new Error('test error'))
+    })
+    sinon.stub(wreck, 'request').callsFake(() => {
+      return Promise.reject(new Error('test error'))
+    })
+    await Code.expect(handler()).to.reject()
+  })
+
+  lab.test('request error', async () => {
+    sinon.stub(wreck, 'request').callsFake(() => {
+      return Promise.resolve(null)
+    })
+    await Code.expect(handler()).to.reject()
   })
 })
-
-// // start up Sinon sandbox
