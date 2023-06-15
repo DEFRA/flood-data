@@ -4,6 +4,14 @@ services:
   postgis:
     image: postgis/postgis
     container_name: postgis
+    volumes:
+      - ./test/data/sql-scripts:/sql-scripts
+    command:
+      [
+        "bash",
+        "-c",
+        "psql -U postgres -d flooddev -f /sql-scripts/u_flood.sql && psql -U postgres -d flooddev -f /sql-scripts/views.sql && psql -U postgres -d flooddev -f /sql-scripts/data.sql && psql -U postgres -d flooddev -f /sql-scripts/u_flood-insert.sql"
+      ]
     networks:
       - postgresnet
     environment:
@@ -11,17 +19,6 @@ services:
       POSTGRES_DB: flooddev
     ports:
       - 5432:5432
-
-  pgadmin4:
-    image: dpage/pgadmin4
-    container_name: pgadmin4
-    networks:
-      - postgresnet
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@gmail.com
-      PGADMIN_DEFAULT_PASSWORD: pgadmin_password
-    ports:
-      - 8080:80
 
   s3-ninja:
     image: scireum/s3-ninja

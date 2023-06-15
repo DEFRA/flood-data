@@ -1,6 +1,6 @@
 {
   "name": "flood-data",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Serverless (AWS Lambda) project for flood data processing",
   "engines": {
     "node": "16.x"
@@ -9,6 +9,7 @@
     "deploy": "sls deploy --force --verbose",
     "integration-test": "lab test/integration -v -r console -o stdout -r junit -o test/output-integration.xml -m 60000",
     "lint": "standard",
+    "lint:fix": "standard --fix",
     "docker:start": "docker-compose up -d",
     "docker:stop": "docker-compose down",
     "migrate:u_flood:create-table": "docker cp test/data/sql-scripts/u_flood.sql postgis:/ && docker exec -it postgis psql -U postgres -d flooddev -f /u_flood.sql",
@@ -17,7 +18,6 @@
     "migrate:insert": "docker cp test/data/sql-scripts/u_flood-insert.sql postgis:/ && docker exec -it postgis psql -U postgres -d flooddev -f /u_flood-insert.sql",
     "migrate:delete": "docker cp test/data/sql-scripts/migration-delete.sql postgis:/ && docker exec -it postgis psql -U postgres -d flooddev -f /migration-delete.sql",
     "migrate:tests": "npm run migrate:u_flood:create-table && npm run migrate:create-view && npm run migrate:create-data && npm run migrate:insert",
-    "lint:fix": "standard --fix",
     "unit-test": "lab test/unit -c -r console -o stdout -r lcov -o coverage/lcov.info -r junit -o test/output-unit.xml",
     "post-deployment-test": "npm run migrate:tests && npm run integration-test",
     "pre-deployment-test": "npm run lint && npm run unit-test",
