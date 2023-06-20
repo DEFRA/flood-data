@@ -169,13 +169,48 @@ lab.experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(1)
-      Code.expect(logger.error.args[0][0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
+      Code.expect(logErrorCalls[0].args[0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
 
       const calls = queryStub.getCalls()
       Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
       Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
       Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
       Code.expect(calls.length).to.equal(1)
+    })
+    lab.test('it should process both RLOI ids even when first encounters an IMTD 500 error', async () => {
+      const test = {
+        rows: [
+          { rloi_id: 1001 },
+          { rloi_id: 1002 }
+        ]
+      }
+      const { query: queryStub } = setupStdDbStubs(test)
+      const axiosStub = setupAxiosStdStub()
+      axiosStub
+        .onFirstCall().rejects({ response: { status: 500 } })
+        .onSecondCall().resolves(testApiResponse)
+      const logger = {
+        info: sinon.spy(),
+        error: sinon.spy()
+      }
+      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+        '../helpers/logging': logger
+      })
+
+      await handler()
+
+      const logInfoCalls = logger.info.getCalls()
+      Code.expect(logInfoCalls.length).to.equal(0)
+
+      const logErrorCalls = logger.error.getCalls()
+      Code.expect(logErrorCalls.length).to.equal(1)
+      Code.expect(logErrorCalls[0].args[0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
+
+      const calls = queryStub.getCalls()
+      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
+      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(1)
+      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(6)
+      Code.expect(calls.length).to.equal(8)
     })
     lab.test('it should throw an error when IMTD response is not parsable (TODO)')
     lab.test('it should throw an error when DB connection fails (TODO)')
