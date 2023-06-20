@@ -213,6 +213,26 @@ lab.experiment('imtd processing', () => {
       Code.expect(calls.length).to.equal(8)
     })
     lab.test('it should throw an error when IMTD response is not parsable (TODO)')
-    lab.test('it should throw an error when DB connection fails (TODO)')
+    lab.test('it should throw an error when DB connection fails', async () => {
+      const { query: queryStub } = setupStdDbStubs()
+      queryStub.rejects(Error('refused'))
+      sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
+      const logger = {
+        info: sinon.spy(),
+        error: sinon.spy()
+      }
+      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+        '../helpers/logging': logger
+      })
+
+      const returnedError = await Code.expect(handler()).to.reject()
+      Code.expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: refused)')
+
+      const logInfoCalls = logger.info.getCalls()
+      Code.expect(logInfoCalls.length).to.equal(0)
+
+      const logErrorCalls = logger.error.getCalls()
+      Code.expect(logErrorCalls.length).to.equal(0)
+    })
   })
 })
