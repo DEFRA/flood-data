@@ -117,7 +117,7 @@ lab.experiment('imtd processing', () => {
   })
 
   lab.experiment('sad path', () => {
-    lab.test('it should log an error when API returns 404 for a given RLOI id', async () => {
+    lab.test('it should log to info when API returns 404 for a given RLOI id', async () => {
       const test = {
         rows: [
           { rloi_id: 1001 }
@@ -126,7 +126,7 @@ lab.experiment('imtd processing', () => {
       const { query: queryStub } = setupStdDbStubs(test)
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
       const logger = {
-        log: sinon.spy()
+        info: sinon.spy()
       }
       const { handler } = proxyquire('../../../lib/functions/imtd-process', {
         '../helpers/logging': logger
@@ -134,7 +134,7 @@ lab.experiment('imtd processing', () => {
 
       await handler(event)
 
-      Code.expect(logger.log.args[0][0]).to.equal('Station 1001 not found in IMTD (HTTP Status: 404)')
+      Code.expect(logger.info.args[0][0]).to.equal('Station 1001 not found in IMTD (HTTP Status: 404)')
 
       const calls = queryStub.getCalls()
       Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
@@ -142,7 +142,7 @@ lab.experiment('imtd processing', () => {
       Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
       Code.expect(calls.length).to.equal(1)
     })
-    lab.test('it should throw an error when API returns a status which is an error and not a 404', async () => {
+    lab.test('it should log an error when API returns a status which is an error and not a 404', async () => {
       const test = {
         rows: [
           { rloi_id: 1001 }
@@ -152,7 +152,7 @@ lab.experiment('imtd processing', () => {
       const axiosStub = setupAxiosStdStub()
       axiosStub.rejects({ response: { status: 500 } })
       const logger = {
-        log: sinon.spy(),
+        info: sinon.spy(),
         error: sinon.spy()
       }
       const { handler } = proxyquire('../../../lib/functions/imtd-process', {
