@@ -4,32 +4,35 @@ const Lab = require('@hapi/lab')
 const lab = (exports.lab = Lab.script())
 const Code = require('@hapi/code')
 const event = require('../../events/imtd-event.json')
-const testStations = require('../../data/imtd-stations').stations
-const testApiResponse = require('../../data/imtd-stations').apiResponse
+const {
+  stations: testStations,
+  apiResponse: testApiResponse,
+  apiNoMatchingThresholdResponse: testApiNoMatchingThresholdResponse
+} = require('../../data/imtd-stations')
 const axios = require('axios')
 const proxyquire = require('proxyquire')
+const mockDb = require('mock-knex')
+const db = require('../../../lib/helpers/db')
+const tracker = mockDb.getTracker()
 
 const { handler } = require('../../../lib/functions/imtd-process')
-
-const { Pool } = require('pg')
 
 // start up Sinon sandbox
 const sinon = require('sinon').createSandbox()
 
 function setupStdDbStubs (test) {
   const stations = test || testStations
-  const connect = sinon.stub(Pool.prototype, 'connect').resolves({
-    query: sinon.stub().resolves({}),
-    release: sinon.stub()
+  const methodCounter = {}
+  tracker.on('query', function (query) {
+    const responses = {
+      select: stations,
+      insert: [],
+      del: []
+    }
+    methodCounter[query.method] = methodCounter[query.method] ? methodCounter[query.method] + 1 : 1
+    query.response(responses[query.method])
   })
-  const query = sinon.stub(Pool.prototype, 'query').resolves(stations)
-  const end = sinon.stub(Pool.prototype, 'end').resolves(stations)
-
-  return {
-    connect,
-    query,
-    end
-  }
+  return methodCounter
 }
 
 function setupAxiosStdStub (response = testApiResponse) {
@@ -37,11 +40,20 @@ function setupAxiosStdStub (response = testApiResponse) {
 }
 
 lab.experiment('imtd processing', () => {
+  lab.before(() => {
+    mockDb.mock(db)
+  })
+
+  lab.after(() => {
+    mockDb.unmock(db)
+  })
+
   lab.beforeEach(async () => {
-    process.env.LFW_DATA_DB_CONNECTION = ''
+    tracker.install()
   })
   lab.afterEach(() => {
     sinon.restore()
+    tracker.uninstall()
   })
 
   lab.test('imtd process latest.json stations', async () => {
@@ -52,78 +64,64 @@ lab.experiment('imtd processing', () => {
 
   lab.experiment('happy path', () => {
     lab.experiment('IMTD response without thresholds', () => {
-      lab.test('it should handle a response with no thresholds (TODO)')
+      lab.test('it should handle a response with no thresholds', async () => {
+        setupAxiosStdStub(testApiNoMatchingThresholdResponse)
+        const counter = setupStdDbStubs([{ rloi_id: 1001 }])
+        await handler(event)
+        Code.expect(counter).to.equal({ select: 1 })
+      })
     })
     lab.experiment('IMTD response with thresholds', () => {
-      lab.test('it should query for RLOI ids once', async () => {
-        const { query: queryStub } = setupStdDbStubs()
+      lab.test('it should select, delete and insert from DB in order and with expected values', async () => {
+        tracker.on('query', function (query, step) {
+          [
+            () => {
+              Code.expect(query.method).to.equal('select')
+              Code.expect(query.sql).to.equal('select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc')
+              query.response([
+                { rloi_id: 1001 }
+              ])
+            },
+            () => {
+              Code.expect(query.method).to.equal('del')
+              Code.expect(query.sql).to.equal('delete from "station_imtd_threshold" where "station_id" = $1')
+              Code.expect(query.bindings).to.equal([1001])
+              query.response([])
+            },
+            () => {
+              Code.expect(query.method).to.equal('insert')
+              Code.expect(query.sql).to.equal('insert into "station_imtd_threshold" ("direction", "fwis_code", "fwis_type", "station_id", "value") values ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25), ($26, $27, $28, $29, $30)')
+              Code.expect(query.bindings).to.equal([
+                'u', '065WAF423', 'A', 1001, 33.4,
+                'u', '065WAF423', 'A', 1001, 33.9,
+                'u', '065WAF423', 'A', 1001, 34.2,
+                'u', '065FWF5001', 'W', 1001, 34.4,
+                'u', '065FWF5001', 'W', 1001, 34.9,
+                'u', '065FWF5001', 'W', 1001, 35.2
+              ])
+              query.response([])
+            }
+          ][step - 1]()
+        })
+
         setupAxiosStdStub()
         await handler(event)
-        const calls = queryStub.getCalls()
-        Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
       })
-      lab.test('it should call axios once per station', async () => {
-        setupStdDbStubs()
+      lab.test('for multiple RLOI ids it should select, delete and insert from DB as expectecd', async () => {
+        const counter = setupStdDbStubs()
         const axiosStub = setupAxiosStdStub()
         await handler(event)
         // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
-        /// 48 inserts + 1 select and 8 drops = 57
+        /// 1 select, 8 deletes and 8 inserts (6 thresholds per insert)
         Code.expect(axiosStub.callCount).to.equal(8)
-      })
-      lab.test('it should delete thresholds once per station', async () => {
-        const { query: queryStub } = setupStdDbStubs()
-        setupAxiosStdStub()
-        await handler(event)
-        // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
-        /// 48 inserts + 1 select and 8 drops = 57
-        const calls = queryStub.getCalls()
-        Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(8)
-        Code.expect(calls.length).to.equal(57)
-      })
-      lab.test('it should insert thresholds for each station', async () => {
-        const { query: queryStub } = setupStdDbStubs()
-        setupAxiosStdStub()
-        await handler(event)
-        // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
-        /// 48 inserts
-        const calls = queryStub.getCalls()
-        Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(48)
-      })
-      lab.test('it should get the rivers list first', async () => {
-        const { query: queryStub } = setupStdDbStubs()
-        setupAxiosStdStub()
-        await handler(event)
-        const calls = queryStub.getCalls()
-        Code.expect(calls[0].args.length).to.equal(1)
-        Code.expect(calls[0].args[0]).to.startWith('select distinct rloi_id from rivers_mview')
-      })
-      lab.test('it should delete existing thresholds before inserting new records', async () => {
-        const stationIds = {
-          rows: [
-            { rloi_id: 1001 },
-            { rloi_id: 1002 }
-          ]
-        }
-        const { query: queryStub } = setupStdDbStubs(stationIds)
-        setupAxiosStdStub()
-        await handler(event)
-        const calls = queryStub.getCalls()
-        Code.expect(calls.length).to.equal(15)
-        Code.expect(calls[1].args.length).to.equal(2)
-        Code.expect(calls[1].args).to.equal(['DELETE FROM u_flood.station_imtd_threshold WHERE station_id = $1', [1001]])
-        Code.expect(calls[3].args).to.equal(['INSERT INTO station_imtd_threshold (station_id, fwis_code, fwis_type, direction, value) SELECT $1, $2, $3, $4, $5 WHERE NOT EXISTS (SELECT 1 FROM station_imtd_threshold WHERE station_id = $1 AND fwis_code = $2 AND fwis_type = $3 AND direction = $4 AND value = $5);', [1001, '065WAF423', 'A', 'u', 33.4]])
+        Code.expect(counter).to.equal({ select: 1, del: 8, insert: 8 })
       })
     })
   })
 
   lab.experiment('sad path', () => {
     lab.test('it should log to info when API returns 404 for a given RLOI id', async () => {
-      const test = {
-        rows: [
-          { rloi_id: 1001 }
-        ]
-      }
-      const { query: queryStub } = setupStdDbStubs(test)
+      setupStdDbStubs([{ rloi_id: 1001 }])
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
       const logger = {
         info: sinon.spy(),
@@ -141,20 +139,9 @@ lab.experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(0)
-
-      const calls = queryStub.getCalls()
-      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
-      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
-      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
-      Code.expect(calls.length).to.equal(1)
     })
     lab.test('it should log an error when API returns a status which is an error and not a 404', async () => {
-      const test = {
-        rows: [
-          { rloi_id: 1001 }
-        ]
-      }
-      const { query: queryStub } = setupStdDbStubs(test)
+      const counter = setupStdDbStubs([{ rloi_id: 1001 }])
       const axiosStub = setupAxiosStdStub()
       axiosStub.rejects({ response: { status: 500 } })
       const logger = {
@@ -171,20 +158,15 @@ lab.experiment('imtd processing', () => {
       Code.expect(logErrorCalls.length).to.equal(1)
       Code.expect(logErrorCalls[0].args[0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
 
-      const calls = queryStub.getCalls()
-      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
-      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
-      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
-      Code.expect(calls.length).to.equal(1)
+      Code.expect(counter).to.equal({ select: 1 })
     })
     lab.test('it should process both RLOI ids even when first encounters an IMTD 500 error', async () => {
-      const test = {
-        rows: [
-          { rloi_id: 1001 },
-          { rloi_id: 1002 }
-        ]
-      }
-      const { query: queryStub } = setupStdDbStubs(test)
+      const test = [
+        { rloi_id: 1001 },
+        { rloi_id: 1002 }
+      ]
+
+      const counter = setupStdDbStubs(test)
       const axiosStub = setupAxiosStdStub()
       axiosStub
         .onFirstCall().rejects({ response: { status: 500 } })
@@ -206,16 +188,13 @@ lab.experiment('imtd processing', () => {
       Code.expect(logErrorCalls.length).to.equal(1)
       Code.expect(logErrorCalls[0].args[0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
 
-      const calls = queryStub.getCalls()
-      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
-      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(1)
-      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(6)
-      Code.expect(calls.length).to.equal(8)
+      Code.expect(counter).to.equal({ select: 1, del: 1, insert: 1 })
     })
     lab.test('it should throw an error when IMTD response is not parsable (TODO)')
     lab.test('it should throw an error when DB connection fails', async () => {
-      const { query: queryStub } = setupStdDbStubs()
-      queryStub.rejects(Error('refused'))
+      tracker.on('query', function (query) {
+        query.reject(Error('refused'))
+      })
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
       const logger = {
         info: sinon.spy(),
@@ -226,7 +205,7 @@ lab.experiment('imtd processing', () => {
       })
 
       const returnedError = await Code.expect(handler()).to.reject()
-      Code.expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: refused)')
+      Code.expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc - refused)')
 
       const logInfoCalls = logger.info.getCalls()
       Code.expect(logInfoCalls.length).to.equal(0)
