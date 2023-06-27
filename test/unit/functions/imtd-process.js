@@ -129,7 +129,7 @@ experiment('imtd processing', () => {
       expect(axiosStub.callCount).to.equal(8)
       expect(counter).to.equal({ begin: 8, select: 1, del: 8, insert: 8, commit: 8 })
     })
-    test('should log to info the details of inserts and deletes', async () => {
+    test('it should log to info the details of inserts and deletes', async () => {
       setupStdDbStubs([{ rloi_id: 1001 }])
       setupAxiosStdStub()
       const { handler, logger } = setupHandlerWithLoggingStub()
@@ -195,7 +195,28 @@ experiment('imtd processing', () => {
 
       expect(counter).to.equal({ select: 1, begin: 1, del: 1, insert: 1, commit: 1 })
     })
-    test('it should throw an error when IMTD response is not parsable (TODO)')
+    test('it should throw an error when IMTD response is not parsable', async () => {
+      const counter = setupStdDbStubs([{ rloi_id: 1001 }])
+      setupAxiosStdStub()
+      const logger = {
+        info: sinon.spy(),
+        error: sinon.spy()
+      }
+
+      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+        '../helpers/logging': logger,
+        '../models/parse-thresholds': { parseThresholds: sinon.stub().throws(Error('Parsing Fail')) }
+
+      })
+
+      await handler()
+
+      const logErrorCalls = logger.error.getCalls()
+      expect(logErrorCalls.length).to.equal(1)
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (Parsing Fail)')
+
+      expect(counter, 'Should only select (i.e. not delete or insert) if the IMTD response is not parsable').to.equal({ select: 1 })
+    })
     test('it should throw an error when DB connection fails when getting RLOI id\'s', async () => {
       tracker.on('query', function (query) {
         query.reject(Error('refused'))
