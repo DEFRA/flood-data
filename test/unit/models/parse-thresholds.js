@@ -16,21 +16,18 @@ lab.experiment('parseThresholds tests', () => {
     Code.expect(thresholds.length).to.equal(3)
     Code.expect(thresholds).to.equal([
       {
-        stationId: undefined,
         floodWarningArea: '033WAF309',
         floodWarningType: 'A',
         direction: 'd',
         level: 1.3
       },
       {
-        stationId: undefined,
         floodWarningArea: '033FWF3TRENT04',
         floodWarningType: 'W',
         direction: 'd',
         level: 1.37
       },
       {
-        stationId: undefined,
         floodWarningArea: '033FWF3TRENT04',
         floodWarningType: 'W',
         direction: 'd',
