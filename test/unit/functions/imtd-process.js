@@ -29,7 +29,8 @@ function setupStdDbStubs (test) {
       insert: [],
       del: []
     }
-    methodCounter[query.method] = methodCounter[query.method] ? methodCounter[query.method] + 1 : 1
+    const method = query.method || query.sql.toLowerCase().replace(';', '')
+    methodCounter[method] = methodCounter[method] ? methodCounter[method] + 1 : 1
     query.response(responses[query.method])
   })
   return methodCounter
@@ -68,7 +69,7 @@ lab.experiment('imtd processing', () => {
         setupAxiosStdStub(testApiNoMatchingThresholdResponse)
         const counter = setupStdDbStubs([{ rloi_id: 1001 }])
         await handler(event)
-        Code.expect(counter).to.equal({ select: 1 })
+        Code.expect(counter).to.equal({ select: 1, del: 1 })
       })
     })
     lab.experiment('IMTD response with thresholds', () => {
@@ -81,6 +82,10 @@ lab.experiment('imtd processing', () => {
               query.response([
                 { rloi_id: 1001 }
               ])
+            },
+            () => {
+              Code.expect(query.sql).to.equal('BEGIN;')
+              query.response()
             },
             () => {
               Code.expect(query.method).to.equal('del')
@@ -100,6 +105,10 @@ lab.experiment('imtd processing', () => {
                 'u', '065FWF5001', 'W', 1001, 35.2
               ])
               query.response([])
+            },
+            () => {
+              Code.expect(query.sql).to.equal('COMMIT;')
+              query.response()
             }
           ][step - 1]()
         })
@@ -107,14 +116,14 @@ lab.experiment('imtd processing', () => {
         setupAxiosStdStub()
         await handler(event)
       })
-      lab.test('for multiple RLOI ids it should select, delete and insert from DB as expectecd', async () => {
+      lab.test('for multiple RLOI ids it should select, delete and insert from DB as expected', async () => {
         const counter = setupStdDbStubs()
         const axiosStub = setupAxiosStdStub()
         await handler(event)
         // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
         /// 1 select, 8 deletes and 8 inserts (6 thresholds per insert)
         Code.expect(axiosStub.callCount).to.equal(8)
-        Code.expect(counter).to.equal({ select: 1, del: 8, insert: 8 })
+        Code.expect(counter).to.equal({ begin: 8, select: 1, del: 8, insert: 8, commit: 8 })
       })
     })
   })
@@ -134,8 +143,9 @@ lab.experiment('imtd processing', () => {
       await handler(event)
 
       const logInfoCalls = logger.info.getCalls()
-      Code.expect(logInfoCalls.length).to.equal(1)
+      Code.expect(logInfoCalls.length).to.equal(2)
       Code.expect(logInfoCalls[0].args[0]).to.equal('Station 1001 not found (HTTP Status: 404)')
+      Code.expect(logInfoCalls[1].args[0]).to.equal('Deleted thresholds for RLOI id 1001')
 
       const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(0)
@@ -156,9 +166,9 @@ lab.experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(1)
-      Code.expect(logErrorCalls[0].args[0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
+      Code.expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (HTTP Status: 500))')
 
-      Code.expect(counter).to.equal({ select: 1 })
+      Code.expect(counter, 'Should only select (i.e. not delete or insert) if there is a non 400 error from API').to.equal({ select: 1 })
     })
     lab.test('it should process both RLOI ids even when first encounters an IMTD 500 error', async () => {
       const test = [
@@ -182,16 +192,16 @@ lab.experiment('imtd processing', () => {
       await handler()
 
       const logInfoCalls = logger.info.getCalls()
-      Code.expect(logInfoCalls.length).to.equal(0)
+      Code.expect(logInfoCalls.length).to.equal(1)
 
       const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(1)
-      Code.expect(logErrorCalls[0].args[0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
+      Code.expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (HTTP Status: 500))')
 
-      Code.expect(counter).to.equal({ select: 1, del: 1, insert: 1 })
+      Code.expect(counter).to.equal({ select: 1, begin: 1, del: 1, insert: 1, commit: 1 })
     })
     lab.test('it should throw an error when IMTD response is not parsable (TODO)')
-    lab.test('it should throw an error when DB connection fails', async () => {
+    lab.test('it should throw an error when DB connection fails when getting RLOI id\'s', async () => {
       tracker.on('query', function (query) {
         query.reject(Error('refused'))
       })
@@ -212,6 +222,90 @@ lab.experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(0)
+    })
+    lab.test('it should log an error and rollback when DB connection fails when deleting thresholds', async () => {
+      tracker.on('query', function (query, step) {
+        [
+          () => {
+            Code.expect(query.method).to.equal('select')
+            query.response([{ rloi_id: 1001 }])
+          },
+          () => {
+            Code.expect(query.sql).to.equal('BEGIN;')
+            query.response()
+          },
+          () => {
+            Code.expect(query.method).to.equal('del')
+            query.reject(Error('Delete Fail'))
+          },
+          () => {
+            Code.expect(query.sql).to.equal('ROLLBACK')
+            query.response()
+          }
+        ][step - 1]()
+      })
+      setupAxiosStdStub()
+      const logger = {
+        info: sinon.spy(),
+        error: sinon.spy()
+      }
+      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+        '../helpers/logging': logger
+      })
+
+      await handler()
+
+      const logErrorCalls = logger.error.getCalls()
+      Code.expect(logErrorCalls.length).to.equal(2)
+      Code.expect(logErrorCalls[0].args[0]).to.equal('Error inserting thresholds for station 1001')
+      Code.expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (delete from "station_imtd_threshold" where "station_id" = $1 - Delete Fail)')
+
+      const logInfoCalls = logger.info.getCalls()
+      Code.expect(logInfoCalls.length).to.equal(0)
+    })
+    lab.test('it should log an error and rollback when DB connection fails when inserting thresholds', async () => {
+      tracker.on('query', function (query, step) {
+        [
+          () => {
+            Code.expect(query.method).to.equal('select')
+            query.response([{ rloi_id: 1001 }])
+          },
+          () => {
+            Code.expect(query.sql).to.equal('BEGIN;')
+            query.response()
+          },
+          () => {
+            Code.expect(query.method).to.equal('del')
+            query.response()
+          },
+          () => {
+            Code.expect(query.method).to.equal('insert')
+            query.reject(Error('Insert Fail'))
+          },
+          () => {
+            Code.expect(query.sql).to.equal('ROLLBACK')
+            query.response()
+          }
+        ][step - 1]()
+      })
+      setupAxiosStdStub()
+      const logger = {
+        info: sinon.spy(),
+        error: sinon.spy()
+      }
+      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+        '../helpers/logging': logger
+      })
+
+      await handler()
+
+      const logErrorCalls = logger.error.getCalls()
+      Code.expect(logErrorCalls.length).to.equal(2)
+      Code.expect(logErrorCalls[0].args[0]).to.equal('Error inserting thresholds for station 1001')
+      Code.expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (insert into "station_imtd_threshold" ("direction", "fwis_code", "fwis_type", "station_id", "value") values ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25), ($26, $27, $28, $29, $30) - Insert Fail)')
+
+      const logInfoCalls = logger.info.getCalls()
+      Code.expect(logInfoCalls.length).to.equal(0)
     })
   })
 })
