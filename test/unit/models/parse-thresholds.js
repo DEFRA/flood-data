@@ -5,6 +5,10 @@ const response = require('./data/imfs-simple-response.json')
 const flowResponse = require('./data/imfs-flow-response.json')
 const { parseThresholds } = require('../../../lib/models/parse-thresholds')
 
+function clone (doc) {
+  return JSON.parse(JSON.stringify(doc))
+}
+
 lab.experiment('parseThresholds tests', () => {
   lab.test('should parse thresholds from simple IMTD response', () => {
     const thresholds = parseThresholds(response[0].TimeSeriesMetaData)
@@ -59,11 +63,25 @@ lab.experiment('parseThresholds tests', () => {
     ])
   })
 
-  lab.test('should parse thresholds where there are no thresholds returned (TODO)')
-  // for example when there are no thresholds matching includedThresholdTypes
-  // use null object pattern
-  // this is just a fancy way of saying don't return null, always return an array of thresholds which may be empty
-
-  lab.test('should parse thresholds where the response has an empty TimeSeriesMetaData (TODO)')
-  lab.test('should parse thresholds where the response has no TimeSeriesMetaData (TODO)')
+  lab.test('should parse thresholds where there are no thresholds returned', () => {
+    const responseCopy = clone(response)
+    responseCopy[0].TimeSeriesMetaData[0].Thresholds = []
+    const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
+    Code.expect(thresholds).to.be.an.array()
+    Code.expect(thresholds.length).to.equal(0)
+  })
+  lab.test('should parse thresholds where the response has an empty TimeSeriesMetaData', () => {
+    const responseCopy = clone(response)
+    responseCopy[0].TimeSeriesMetaData = []
+    const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
+    Code.expect(thresholds).to.be.an.array()
+    Code.expect(thresholds.length).to.equal(0)
+  })
+  lab.test('should parse thresholds where the response has no TimeSeriesMetaData', () => {
+    const responseCopy = clone(response)
+    delete responseCopy[0].TimeSeriesMetaData
+    const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
+    Code.expect(thresholds).to.be.an.array()
+    Code.expect(thresholds.length).to.equal(0)
+  })
 })
