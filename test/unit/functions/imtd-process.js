@@ -40,6 +40,18 @@ function setupAxiosStdStub (response = testApiResponse) {
   return sinon.stub(axios, 'get').resolves(response)
 }
 
+function setupLoggerStub () {
+  const logger = {
+    info: sinon.spy(),
+    error: sinon.spy()
+  }
+  const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+    '../helpers/logging': logger
+  })
+
+  return { handler, logger }
+}
+
 lab.experiment('imtd processing', () => {
   lab.before(() => {
     mockDb.mock(db)
@@ -55,12 +67,6 @@ lab.experiment('imtd processing', () => {
   lab.afterEach(() => {
     sinon.restore()
     tracker.uninstall()
-  })
-
-  lab.test('imtd process latest.json stations', async () => {
-    setupStdDbStubs()
-    setupAxiosStdStub()
-    await handler(event)
   })
 
   lab.experiment('happy path', () => {
@@ -125,6 +131,16 @@ lab.experiment('imtd processing', () => {
         Code.expect(axiosStub.callCount).to.equal(8)
         Code.expect(counter).to.equal({ begin: 8, select: 1, del: 8, insert: 8, commit: 8 })
       })
+      lab.test('should log to info the details of inserts and deletes', async () => {
+        setupStdDbStubs([{ rloi_id: 1001 }])
+        setupAxiosStdStub()
+        const { handler, logger } = setupLoggerStub()
+
+        await handler(event)
+        const logInfoCalls = logger.info.getCalls()
+        Code.expect(logInfoCalls.length).to.equal(1)
+        Code.expect(logInfoCalls[0].args[0]).to.equal('Processed 6 thresholds for RLOI id 1001')
+      })
     })
   })
 
@@ -132,13 +148,7 @@ lab.experiment('imtd processing', () => {
     lab.test('it should log to info when API returns 404 for a given RLOI id', async () => {
       setupStdDbStubs([{ rloi_id: 1001 }])
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupLoggerStub()
 
       await handler(event)
 
@@ -154,13 +164,7 @@ lab.experiment('imtd processing', () => {
       const counter = setupStdDbStubs([{ rloi_id: 1001 }])
       const axiosStub = setupAxiosStdStub()
       axiosStub.rejects({ response: { status: 500 } })
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupLoggerStub()
 
       await handler()
 
@@ -181,13 +185,7 @@ lab.experiment('imtd processing', () => {
       axiosStub
         .onFirstCall().rejects({ response: { status: 500 } })
         .onSecondCall().resolves(testApiResponse)
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupLoggerStub()
 
       await handler()
 
@@ -206,13 +204,7 @@ lab.experiment('imtd processing', () => {
         query.reject(Error('refused'))
       })
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupLoggerStub()
 
       const returnedError = await Code.expect(handler()).to.reject()
       Code.expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc - refused)')
@@ -245,19 +237,13 @@ lab.experiment('imtd processing', () => {
         ][step - 1]()
       })
       setupAxiosStdStub()
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupLoggerStub()
 
       await handler()
 
       const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(2)
-      Code.expect(logErrorCalls[0].args[0]).to.equal('Error inserting thresholds for station 1001')
+      Code.expect(logErrorCalls[0].args[0]).to.equal('Error processing thresholds for station 1001')
       Code.expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (delete from "station_imtd_threshold" where "station_id" = $1 - Delete Fail)')
 
       const logInfoCalls = logger.info.getCalls()
@@ -289,19 +275,13 @@ lab.experiment('imtd processing', () => {
         ][step - 1]()
       })
       setupAxiosStdStub()
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupLoggerStub()
 
       await handler()
 
       const logErrorCalls = logger.error.getCalls()
       Code.expect(logErrorCalls.length).to.equal(2)
-      Code.expect(logErrorCalls[0].args[0]).to.equal('Error inserting thresholds for station 1001')
+      Code.expect(logErrorCalls[0].args[0]).to.equal('Error processing thresholds for station 1001')
       Code.expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (insert into "station_imtd_threshold" ("direction", "fwis_code", "fwis_type", "station_id", "value") values ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25), ($26, $27, $28, $29, $30) - Insert Fail)')
 
       const logInfoCalls = logger.info.getCalls()
