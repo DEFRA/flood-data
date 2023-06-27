@@ -205,8 +205,7 @@ experiment('imtd processing', () => {
 
       const { handler } = proxyquire('../../../lib/functions/imtd-process', {
         '../helpers/logging': logger,
-        '../models/parse-thresholds': { parseThresholds: sinon.stub().throws(Error('Parsing Fail')) }
-
+        '../models/parse-thresholds': sinon.stub().throws(Error('Parsing Fail'))
       })
 
       await handler()

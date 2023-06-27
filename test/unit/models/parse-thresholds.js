@@ -3,7 +3,7 @@ const Lab = require('@hapi/lab')
 const lab = exports.lab = Lab.script()
 const response = require('./data/imfs-simple-response.json')
 const flowResponse = require('./data/imfs-flow-response.json')
-const { parseThresholds } = require('../../../lib/models/parse-thresholds')
+const parseThresholds = require('../../../lib/models/parse-thresholds')
 
 function clone (doc) {
   return JSON.parse(JSON.stringify(doc))
