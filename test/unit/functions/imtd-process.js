@@ -40,8 +40,8 @@ function setupAxiosStdStub (response = testApiResponse) {
 
 function setupHandlerWithLoggingStub () {
   const logger = {
-    info: sinon.spy(),
-    error: sinon.spy()
+    info: sinon.stub(),
+    error: sinon.stub()
   }
   const { handler } = proxyquire('../../../lib/functions/imtd-process', {
     '../helpers/logging': logger
@@ -199,8 +199,8 @@ experiment('imtd processing', () => {
       const counter = setupStdDbStubs([{ rloi_id: 1001 }])
       setupAxiosStdStub()
       const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
+        info: sinon.stub(),
+        error: sinon.stub()
       }
 
       const { handler } = proxyquire('../../../lib/functions/imtd-process', {
