@@ -68,80 +68,76 @@ experiment('imtd processing', () => {
   })
 
   experiment('happy path', () => {
-    experiment('IMTD response without thresholds', () => {
-      test('it should handle a response with no thresholds', async () => {
-        const { handler } = setupHandlerWithLoggingStub()
-        setupAxiosStdStub(testApiNoMatchingThresholdResponse)
-        const counter = setupStdDbStubs([{ rloi_id: 1001 }])
-        await handler(event)
-        expect(counter).to.equal({ select: 1, del: 1 })
-      })
+    test('it should handle a response with no thresholds', async () => {
+      const { handler } = setupHandlerWithLoggingStub()
+      setupAxiosStdStub(testApiNoMatchingThresholdResponse)
+      const counter = setupStdDbStubs([{ rloi_id: 1001 }])
+      await handler(event)
+      expect(counter).to.equal({ select: 1, del: 1 })
     })
-    experiment('IMTD response with thresholds', () => {
-      test('it should select, delete and insert from DB in order and with expected values', async () => {
-        tracker.on('query', function (query, step) {
-          [
-            () => {
-              expect(query.method).to.equal('select')
-              expect(query.sql).to.equal('select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc')
-              query.response([
-                { rloi_id: 1001 }
-              ])
-            },
-            () => {
-              expect(query.sql).to.equal('BEGIN;')
-              query.response()
-            },
-            () => {
-              expect(query.method).to.equal('del')
-              expect(query.sql).to.equal('delete from "station_imtd_threshold" where "station_id" = $1')
-              expect(query.bindings).to.equal([1001])
-              query.response([])
-            },
-            () => {
-              expect(query.method).to.equal('insert')
-              expect(query.sql).to.equal('insert into "station_imtd_threshold" ("direction", "fwis_code", "fwis_type", "station_id", "value") values ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25), ($26, $27, $28, $29, $30)')
-              expect(query.bindings).to.equal([
-                'u', '065WAF423', 'A', 1001, 33.4,
-                'u', '065WAF423', 'A', 1001, 33.9,
-                'u', '065WAF423', 'A', 1001, 34.2,
-                'u', '065FWF5001', 'W', 1001, 34.4,
-                'u', '065FWF5001', 'W', 1001, 34.9,
-                'u', '065FWF5001', 'W', 1001, 35.2
-              ])
-              query.response([])
-            },
-            () => {
-              expect(query.sql).to.equal('COMMIT;')
-              query.response()
-            }
-          ][step - 1]()
-        })
+    test('it should select, delete and insert from DB in order and with expected values', async () => {
+      tracker.on('query', function (query, step) {
+        [
+          () => {
+            expect(query.method).to.equal('select')
+            expect(query.sql).to.equal('select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc')
+            query.response([
+              { rloi_id: 1001 }
+            ])
+          },
+          () => {
+            expect(query.sql).to.equal('BEGIN;')
+            query.response()
+          },
+          () => {
+            expect(query.method).to.equal('del')
+            expect(query.sql).to.equal('delete from "station_imtd_threshold" where "station_id" = $1')
+            expect(query.bindings).to.equal([1001])
+            query.response([])
+          },
+          () => {
+            expect(query.method).to.equal('insert')
+            expect(query.sql).to.equal('insert into "station_imtd_threshold" ("direction", "fwis_code", "fwis_type", "station_id", "value") values ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25), ($26, $27, $28, $29, $30)')
+            expect(query.bindings).to.equal([
+              'u', '065WAF423', 'A', 1001, 33.4,
+              'u', '065WAF423', 'A', 1001, 33.9,
+              'u', '065WAF423', 'A', 1001, 34.2,
+              'u', '065FWF5001', 'W', 1001, 34.4,
+              'u', '065FWF5001', 'W', 1001, 34.9,
+              'u', '065FWF5001', 'W', 1001, 35.2
+            ])
+            query.response([])
+          },
+          () => {
+            expect(query.sql).to.equal('COMMIT;')
+            query.response()
+          }
+        ][step - 1]()
+      })
 
-        const { handler } = setupHandlerWithLoggingStub()
-        setupAxiosStdStub()
-        await handler(event)
-      })
-      test('for multiple RLOI ids it should select, delete and insert from DB as expected', async () => {
-        const { handler } = setupHandlerWithLoggingStub()
-        const counter = setupStdDbStubs()
-        const axiosStub = setupAxiosStdStub()
-        await handler(event)
-        // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
-        /// 1 select, 8 deletes and 8 inserts (6 thresholds per insert)
-        expect(axiosStub.callCount).to.equal(8)
-        expect(counter).to.equal({ begin: 8, select: 1, del: 8, insert: 8, commit: 8 })
-      })
-      test('should log to info the details of inserts and deletes', async () => {
-        setupStdDbStubs([{ rloi_id: 1001 }])
-        setupAxiosStdStub()
-        const { handler, logger } = setupHandlerWithLoggingStub()
+      const { handler } = setupHandlerWithLoggingStub()
+      setupAxiosStdStub()
+      await handler(event)
+    })
+    test('for multiple RLOI ids it should select, delete and insert from DB as expected', async () => {
+      const { handler } = setupHandlerWithLoggingStub()
+      const counter = setupStdDbStubs()
+      const axiosStub = setupAxiosStdStub()
+      await handler(event)
+      // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
+      /// 1 select, 8 deletes and 8 inserts (6 thresholds per insert)
+      expect(axiosStub.callCount).to.equal(8)
+      expect(counter).to.equal({ begin: 8, select: 1, del: 8, insert: 8, commit: 8 })
+    })
+    test('should log to info the details of inserts and deletes', async () => {
+      setupStdDbStubs([{ rloi_id: 1001 }])
+      setupAxiosStdStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
-        await handler(event)
-        const logInfoCalls = logger.info.getCalls()
-        expect(logInfoCalls.length).to.equal(1)
-        expect(logInfoCalls[0].args[0]).to.equal('Processed 6 thresholds for RLOI id 1001')
-      })
+      await handler(event)
+      const logInfoCalls = logger.info.getCalls()
+      expect(logInfoCalls.length).to.equal(1)
+      expect(logInfoCalls[0].args[0]).to.equal('Processed 6 thresholds for RLOI id 1001')
     })
   })
 
