@@ -1,7 +1,7 @@
 'use strict'
 
 const Lab = require('@hapi/lab')
-const lab = (exports.lab = Lab.script())
+const { after, afterEach, before, beforeEach, experiment, test } = (exports.lab = Lab.script())
 const { expect } = require('@hapi/code')
 const event = require('../../events/imtd-event.json')
 const {
@@ -50,26 +50,26 @@ function setupHandlerWithLoggingStub () {
   return { handler, logger }
 }
 
-lab.experiment('imtd processing', () => {
-  lab.before(() => {
+experiment('imtd processing', () => {
+  before(() => {
     mockDb.mock(db)
   })
 
-  lab.after(() => {
+  after(() => {
     mockDb.unmock(db)
   })
 
-  lab.beforeEach(async () => {
+  beforeEach(async () => {
     tracker.install()
   })
-  lab.afterEach(() => {
+  afterEach(() => {
     sinon.restore()
     tracker.uninstall()
   })
 
-  lab.experiment('happy path', () => {
-    lab.experiment('IMTD response without thresholds', () => {
-      lab.test('it should handle a response with no thresholds', async () => {
+  experiment('happy path', () => {
+    experiment('IMTD response without thresholds', () => {
+      test('it should handle a response with no thresholds', async () => {
         const { handler } = setupHandlerWithLoggingStub()
         setupAxiosStdStub(testApiNoMatchingThresholdResponse)
         const counter = setupStdDbStubs([{ rloi_id: 1001 }])
@@ -77,8 +77,8 @@ lab.experiment('imtd processing', () => {
         expect(counter).to.equal({ select: 1, del: 1 })
       })
     })
-    lab.experiment('IMTD response with thresholds', () => {
-      lab.test('it should select, delete and insert from DB in order and with expected values', async () => {
+    experiment('IMTD response with thresholds', () => {
+      test('it should select, delete and insert from DB in order and with expected values', async () => {
         tracker.on('query', function (query, step) {
           [
             () => {
@@ -122,7 +122,7 @@ lab.experiment('imtd processing', () => {
         setupAxiosStdStub()
         await handler(event)
       })
-      lab.test('for multiple RLOI ids it should select, delete and insert from DB as expected', async () => {
+      test('for multiple RLOI ids it should select, delete and insert from DB as expected', async () => {
         const { handler } = setupHandlerWithLoggingStub()
         const counter = setupStdDbStubs()
         const axiosStub = setupAxiosStdStub()
@@ -132,7 +132,7 @@ lab.experiment('imtd processing', () => {
         expect(axiosStub.callCount).to.equal(8)
         expect(counter).to.equal({ begin: 8, select: 1, del: 8, insert: 8, commit: 8 })
       })
-      lab.test('should log to info the details of inserts and deletes', async () => {
+      test('should log to info the details of inserts and deletes', async () => {
         setupStdDbStubs([{ rloi_id: 1001 }])
         setupAxiosStdStub()
         const { handler, logger } = setupHandlerWithLoggingStub()
@@ -145,8 +145,8 @@ lab.experiment('imtd processing', () => {
     })
   })
 
-  lab.experiment('sad path', () => {
-    lab.test('it should log to info when API returns 404 for a given RLOI id', async () => {
+  experiment('sad path', () => {
+    test('it should log to info when API returns 404 for a given RLOI id', async () => {
       setupStdDbStubs([{ rloi_id: 1001 }])
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
       const { handler, logger } = setupHandlerWithLoggingStub()
@@ -161,7 +161,7 @@ lab.experiment('imtd processing', () => {
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(0)
     })
-    lab.test('it should log an error when API returns a status which is an error and not a 404', async () => {
+    test('it should log an error when API returns a status which is an error and not a 404', async () => {
       const counter = setupStdDbStubs([{ rloi_id: 1001 }])
       const axiosStub = setupAxiosStdStub()
       axiosStub.rejects({ response: { status: 500 } })
@@ -175,7 +175,7 @@ lab.experiment('imtd processing', () => {
 
       expect(counter, 'Should only select (i.e. not delete or insert) if there is a non 400 error from API').to.equal({ select: 1 })
     })
-    lab.test('it should process both RLOI ids even when first encounters an IMTD 500 error', async () => {
+    test('it should process both RLOI ids even when first encounters an IMTD 500 error', async () => {
       const test = [
         { rloi_id: 1001 },
         { rloi_id: 1002 }
@@ -199,8 +199,8 @@ lab.experiment('imtd processing', () => {
 
       expect(counter).to.equal({ select: 1, begin: 1, del: 1, insert: 1, commit: 1 })
     })
-    lab.test('it should throw an error when IMTD response is not parsable (TODO)')
-    lab.test('it should throw an error when DB connection fails when getting RLOI id\'s', async () => {
+    test('it should throw an error when IMTD response is not parsable (TODO)')
+    test('it should throw an error when DB connection fails when getting RLOI id\'s', async () => {
       tracker.on('query', function (query) {
         query.reject(Error('refused'))
       })
@@ -216,7 +216,7 @@ lab.experiment('imtd processing', () => {
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(0)
     })
-    lab.test('it should log an error and rollback when DB connection fails when deleting thresholds', async () => {
+    test('it should log an error and rollback when DB connection fails when deleting thresholds', async () => {
       tracker.on('query', function (query, step) {
         [
           () => {
@@ -250,7 +250,7 @@ lab.experiment('imtd processing', () => {
       const logInfoCalls = logger.info.getCalls()
       expect(logInfoCalls.length).to.equal(0)
     })
-    lab.test('it should log an error and rollback when DB connection fails when inserting thresholds', async () => {
+    test('it should log an error and rollback when DB connection fails when inserting thresholds', async () => {
       tracker.on('query', function (query, step) {
         [
           () => {
