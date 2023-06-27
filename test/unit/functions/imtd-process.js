@@ -15,8 +15,7 @@ const mockDb = require('mock-knex')
 const db = require('../../../lib/helpers/db')
 const tracker = mockDb.getTracker()
 
-// start up Sinon sandbox
-const sinon = require('sinon').createSandbox()
+const sinon = require('sinon')
 
 function setupStdDbStubs (test) {
   const stations = test || testStations
