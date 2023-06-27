@@ -15,8 +15,6 @@ const mockDb = require('mock-knex')
 const db = require('../../../lib/helpers/db')
 const tracker = mockDb.getTracker()
 
-const { handler } = require('../../../lib/functions/imtd-process')
-
 // start up Sinon sandbox
 const sinon = require('sinon').createSandbox()
 
@@ -40,7 +38,7 @@ function setupAxiosStdStub (response = testApiResponse) {
   return sinon.stub(axios, 'get').resolves(response)
 }
 
-function setupLoggerStub () {
+function setupHandlerWithLoggingStub () {
   const logger = {
     info: sinon.spy(),
     error: sinon.spy()
@@ -72,6 +70,7 @@ lab.experiment('imtd processing', () => {
   lab.experiment('happy path', () => {
     lab.experiment('IMTD response without thresholds', () => {
       lab.test('it should handle a response with no thresholds', async () => {
+        const { handler } = setupHandlerWithLoggingStub()
         setupAxiosStdStub(testApiNoMatchingThresholdResponse)
         const counter = setupStdDbStubs([{ rloi_id: 1001 }])
         await handler(event)
@@ -119,10 +118,12 @@ lab.experiment('imtd processing', () => {
           ][step - 1]()
         })
 
+        const { handler } = setupHandlerWithLoggingStub()
         setupAxiosStdStub()
         await handler(event)
       })
       lab.test('for multiple RLOI ids it should select, delete and insert from DB as expected', async () => {
+        const { handler } = setupHandlerWithLoggingStub()
         const counter = setupStdDbStubs()
         const axiosStub = setupAxiosStdStub()
         await handler(event)
@@ -134,7 +135,7 @@ lab.experiment('imtd processing', () => {
       lab.test('should log to info the details of inserts and deletes', async () => {
         setupStdDbStubs([{ rloi_id: 1001 }])
         setupAxiosStdStub()
-        const { handler, logger } = setupLoggerStub()
+        const { handler, logger } = setupHandlerWithLoggingStub()
 
         await handler(event)
         const logInfoCalls = logger.info.getCalls()
@@ -148,7 +149,7 @@ lab.experiment('imtd processing', () => {
     lab.test('it should log to info when API returns 404 for a given RLOI id', async () => {
       setupStdDbStubs([{ rloi_id: 1001 }])
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
-      const { handler, logger } = setupLoggerStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
       await handler(event)
 
@@ -164,7 +165,7 @@ lab.experiment('imtd processing', () => {
       const counter = setupStdDbStubs([{ rloi_id: 1001 }])
       const axiosStub = setupAxiosStdStub()
       axiosStub.rejects({ response: { status: 500 } })
-      const { handler, logger } = setupLoggerStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
       await handler()
 
@@ -185,7 +186,7 @@ lab.experiment('imtd processing', () => {
       axiosStub
         .onFirstCall().rejects({ response: { status: 500 } })
         .onSecondCall().resolves(testApiResponse)
-      const { handler, logger } = setupLoggerStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
       await handler()
 
@@ -204,7 +205,7 @@ lab.experiment('imtd processing', () => {
         query.reject(Error('refused'))
       })
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
-      const { handler, logger } = setupLoggerStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
       const returnedError = await Code.expect(handler()).to.reject()
       Code.expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc - refused)')
@@ -237,7 +238,7 @@ lab.experiment('imtd processing', () => {
         ][step - 1]()
       })
       setupAxiosStdStub()
-      const { handler, logger } = setupLoggerStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
       await handler()
 
@@ -275,7 +276,7 @@ lab.experiment('imtd processing', () => {
         ][step - 1]()
       })
       setupAxiosStdStub()
-      const { handler, logger } = setupLoggerStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
       await handler()
 
