@@ -170,6 +170,20 @@ experiment('imtd processing', () => {
 
       expect(counter, 'Should only select (i.e. not delete or insert) if there is a non 400 error from API').to.equal({ select: 1 })
     })
+    test('it should log an error when network encounters an error', async () => {
+      const counter = setupStdDbStubs([{ rloi_id: 1001 }])
+      const axiosStub = setupAxiosStdStub()
+      axiosStub.rejects(Error('getaddrinfo ENOTFOUND imfs-prd1-thresholds-api.azurewebsites.net'))
+      const { handler, logger } = setupHandlerWithLoggingStub()
+
+      await handler()
+
+      const logErrorCalls = logger.error.getCalls()
+      expect(logErrorCalls.length).to.equal(1)
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (Error: getaddrinfo ENOTFOUND imfs-prd1-thresholds-api.azurewebsites.net))')
+
+      expect(counter, 'Should only select (i.e. not delete or insert) if there is a non 400 error from API').to.equal({ select: 1 })
+    })
     test('it should process both RLOI ids even when first encounters an IMTD 500 error', async () => {
       const test = [
         { rloi_id: 1001 },
