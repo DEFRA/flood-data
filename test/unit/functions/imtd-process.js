@@ -1,238 +1,320 @@
 'use strict'
 
 const Lab = require('@hapi/lab')
-const lab = (exports.lab = Lab.script())
-const Code = require('@hapi/code')
-const event = require('../../events/imtd-event.json')
-const testStations = require('../../data/imtd-stations').stations
-const testApiResponse = require('../../data/imtd-stations').apiResponse
+const { after, afterEach, before, beforeEach, experiment, test } = (exports.lab = Lab.script())
+const { expect } = require('@hapi/code')
+const {
+  stations: testStations,
+  apiResponse: testApiResponse,
+  apiNoMatchingThresholdResponse: testApiNoMatchingThresholdResponse
+} = require('../../data/imtd-stations')
 const axios = require('axios')
 const proxyquire = require('proxyquire')
+const mockDb = require('mock-knex')
+const db = require('../../../lib/helpers/db')
+const tracker = mockDb.getTracker()
 
-const { handler } = require('../../../lib/functions/imtd-process')
-
-const { Pool } = require('pg')
-
-// start up Sinon sandbox
-const sinon = require('sinon').createSandbox()
+const sinon = require('sinon')
 
 function setupStdDbStubs (test) {
   const stations = test || testStations
-  const connect = sinon.stub(Pool.prototype, 'connect').resolves({
-    query: sinon.stub().resolves({}),
-    release: sinon.stub()
+  const methodCounter = {}
+  tracker.on('query', function (query) {
+    const responses = {
+      select: stations,
+      insert: [],
+      del: []
+    }
+    const method = query.method || query.sql.toLowerCase().replace(';', '')
+    methodCounter[method] = methodCounter[method] ? methodCounter[method] + 1 : 1
+    query.response(responses[query.method])
   })
-  const query = sinon.stub(Pool.prototype, 'query').resolves(stations)
-  const end = sinon.stub(Pool.prototype, 'end').resolves(stations)
-
-  return {
-    connect,
-    query,
-    end
-  }
+  return methodCounter
 }
 
 function setupAxiosStdStub (response = testApiResponse) {
   return sinon.stub(axios, 'get').resolves(response)
 }
 
-lab.experiment('imtd processing', () => {
-  lab.beforeEach(async () => {
-    process.env.LFW_DATA_DB_CONNECTION = ''
+function setupHandlerWithLoggingStub () {
+  const logger = {
+    info: sinon.stub(),
+    error: sinon.stub()
+  }
+  const { handler } = proxyquire('../../../lib/functions/imtd-process', {
+    '../helpers/logging': logger
   })
-  lab.afterEach(() => {
+
+  return { handler, logger }
+}
+
+experiment('imtd processing', () => {
+  before(() => {
+    mockDb.mock(db)
+  })
+
+  after(() => {
+    mockDb.unmock(db)
+  })
+
+  beforeEach(async () => {
+    tracker.install()
+  })
+  afterEach(() => {
     sinon.restore()
+    tracker.uninstall()
   })
 
-  lab.test('imtd process latest.json stations', async () => {
-    setupStdDbStubs()
-    setupAxiosStdStub()
-    await handler(event)
-  })
-
-  lab.experiment('happy path', () => {
-    lab.experiment('IMTD response without thresholds', () => {
-      lab.test('it should handle a response with no thresholds (TODO)')
+  experiment('happy path', () => {
+    test('it should handle a response with no thresholds', async () => {
+      const { handler } = setupHandlerWithLoggingStub()
+      setupAxiosStdStub(testApiNoMatchingThresholdResponse)
+      const counter = setupStdDbStubs([{ rloi_id: 1001 }])
+      await handler()
+      expect(counter).to.equal({ select: 1, del: 1 })
     })
-    lab.experiment('IMTD response with thresholds', () => {
-      lab.test('it should query for RLOI ids once', async () => {
-        const { query: queryStub } = setupStdDbStubs()
-        setupAxiosStdStub()
-        await handler(event)
-        const calls = queryStub.getCalls()
-        Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
+    test('it should select, delete and insert from DB in order and with expected values', async () => {
+      tracker.on('query', function (query, step) {
+        [
+          () => {
+            expect(query.method).to.equal('select')
+            expect(query.sql).to.equal('select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc')
+            query.response([
+              { rloi_id: 1001 }
+            ])
+          },
+          () => {
+            expect(query.sql).to.equal('BEGIN;')
+            query.response()
+          },
+          () => {
+            expect(query.method).to.equal('del')
+            expect(query.sql).to.equal('delete from "station_imtd_threshold" where "station_id" = $1')
+            expect(query.bindings).to.equal([1001])
+            query.response([])
+          },
+          () => {
+            expect(query.method).to.equal('insert')
+            expect(query.sql).to.equal('insert into "station_imtd_threshold" ("direction", "fwis_code", "fwis_type", "station_id", "value") values ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25), ($26, $27, $28, $29, $30)')
+            expect(query.bindings).to.equal([
+              'u', '065WAF423', 'A', 1001, 33.4,
+              'u', '065WAF423', 'A', 1001, 33.9,
+              'u', '065WAF423', 'A', 1001, 34.2,
+              'u', '065FWF5001', 'W', 1001, 34.4,
+              'u', '065FWF5001', 'W', 1001, 34.9,
+              'u', '065FWF5001', 'W', 1001, 35.2
+            ])
+            query.response([])
+          },
+          () => {
+            expect(query.sql).to.equal('COMMIT;')
+            query.response()
+          }
+        ][step - 1]()
       })
-      lab.test('it should call axios once per station', async () => {
-        setupStdDbStubs()
-        const axiosStub = setupAxiosStdStub()
-        await handler(event)
-        // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
-        /// 48 inserts + 1 select and 8 drops = 57
-        Code.expect(axiosStub.callCount).to.equal(8)
-      })
-      lab.test('it should delete thresholds once per station', async () => {
-        const { query: queryStub } = setupStdDbStubs()
-        setupAxiosStdStub()
-        await handler(event)
-        // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
-        /// 48 inserts + 1 select and 8 drops = 57
-        const calls = queryStub.getCalls()
-        Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(8)
-        Code.expect(calls.length).to.equal(57)
-      })
-      lab.test('it should insert thresholds for each station', async () => {
-        const { query: queryStub } = setupStdDbStubs()
-        setupAxiosStdStub()
-        await handler(event)
-        // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
-        /// 48 inserts
-        const calls = queryStub.getCalls()
-        Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(48)
-      })
-      lab.test('it should get the rivers list first', async () => {
-        const { query: queryStub } = setupStdDbStubs()
-        setupAxiosStdStub()
-        await handler(event)
-        const calls = queryStub.getCalls()
-        Code.expect(calls[0].args.length).to.equal(1)
-        Code.expect(calls[0].args[0]).to.startWith('select distinct rloi_id from rivers_mview')
-      })
-      lab.test('it should delete existing thresholds before inserting new records', async () => {
-        const stationIds = {
-          rows: [
-            { rloi_id: 1001 },
-            { rloi_id: 1002 }
-          ]
-        }
-        const { query: queryStub } = setupStdDbStubs(stationIds)
-        setupAxiosStdStub()
-        await handler(event)
-        const calls = queryStub.getCalls()
-        Code.expect(calls.length).to.equal(15)
-        Code.expect(calls[1].args.length).to.equal(2)
-        Code.expect(calls[1].args).to.equal(['DELETE FROM u_flood.station_imtd_threshold WHERE station_id = $1', [1001]])
-        Code.expect(calls[3].args).to.equal(['INSERT INTO station_imtd_threshold (station_id, fwis_code, fwis_type, direction, value) SELECT $1, $2, $3, $4, $5 WHERE NOT EXISTS (SELECT 1 FROM station_imtd_threshold WHERE station_id = $1 AND fwis_code = $2 AND fwis_type = $3 AND direction = $4 AND value = $5);', [1001, '065WAF423', 'A', 'u', 33.4]])
-      })
+
+      const { handler } = setupHandlerWithLoggingStub()
+      setupAxiosStdStub()
+      await handler()
+    })
+    test('for multiple RLOI ids it should select, delete and insert from DB as expected', async () => {
+      const { handler } = setupHandlerWithLoggingStub()
+      const counter = setupStdDbStubs()
+      const axiosStub = setupAxiosStdStub()
+      await handler()
+      // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
+      /// 1 select, 8 deletes and 8 inserts (6 thresholds per insert)
+      expect(axiosStub.callCount).to.equal(8)
+      expect(counter).to.equal({ begin: 8, select: 1, del: 8, insert: 8, commit: 8 })
+    })
+    test('it should log to info the details of inserts and deletes', async () => {
+      setupStdDbStubs([{ rloi_id: 1001 }])
+      setupAxiosStdStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
+
+      await handler()
+      const logInfoCalls = logger.info.getCalls()
+      expect(logInfoCalls.length).to.equal(1)
+      expect(logInfoCalls[0].args[0]).to.equal('Processed 6 thresholds for RLOI id 1001')
     })
   })
 
-  lab.experiment('sad path', () => {
-    lab.test('it should log to info when API returns 404 for a given RLOI id', async () => {
-      const test = {
-        rows: [
-          { rloi_id: 1001 }
-        ]
-      }
-      const { query: queryStub } = setupStdDbStubs(test)
+  experiment('sad path', () => {
+    test('it should log to info when API returns 404 for a given RLOI id', async () => {
+      setupStdDbStubs([{ rloi_id: 1001 }])
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
-      await handler(event)
+      await handler()
 
       const logInfoCalls = logger.info.getCalls()
-      Code.expect(logInfoCalls.length).to.equal(1)
-      Code.expect(logInfoCalls[0].args[0]).to.equal('Station 1001 not found (HTTP Status: 404)')
+      expect(logInfoCalls.length).to.equal(2)
+      expect(logInfoCalls[0].args[0]).to.equal('Station 1001 not found (HTTP Status: 404)')
+      expect(logInfoCalls[1].args[0]).to.equal('Deleted thresholds for RLOI id 1001')
 
       const logErrorCalls = logger.error.getCalls()
-      Code.expect(logErrorCalls.length).to.equal(0)
-
-      const calls = queryStub.getCalls()
-      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
-      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
-      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
-      Code.expect(calls.length).to.equal(1)
+      expect(logErrorCalls.length).to.equal(0)
     })
-    lab.test('it should log an error when API returns a status which is an error and not a 404', async () => {
-      const test = {
-        rows: [
-          { rloi_id: 1001 }
-        ]
-      }
-      const { query: queryStub } = setupStdDbStubs(test)
+    test('it should log an error when API returns a status which is an error and not a 404', async () => {
+      const counter = setupStdDbStubs([{ rloi_id: 1001 }])
       const axiosStub = setupAxiosStdStub()
       axiosStub.rejects({ response: { status: 500 } })
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
       await handler()
 
       const logErrorCalls = logger.error.getCalls()
-      Code.expect(logErrorCalls.length).to.equal(1)
-      Code.expect(logErrorCalls[0].args[0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
+      expect(logErrorCalls.length).to.equal(1)
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (HTTP Status: 500))')
 
-      const calls = queryStub.getCalls()
-      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
-      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(0)
-      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(0)
-      Code.expect(calls.length).to.equal(1)
+      expect(counter, 'Should only select (i.e. not delete or insert) if there is a non 400 error from API').to.equal({ select: 1 })
     })
-    lab.test('it should process both RLOI ids even when first encounters an IMTD 500 error', async () => {
-      const test = {
-        rows: [
-          { rloi_id: 1001 },
-          { rloi_id: 1002 }
-        ]
-      }
-      const { query: queryStub } = setupStdDbStubs(test)
+    test('it should log an error when network encounters an error', async () => {
+      const counter = setupStdDbStubs([{ rloi_id: 1001 }])
+      const axiosStub = setupAxiosStdStub()
+      axiosStub.rejects(Error('getaddrinfo ENOTFOUND imfs-prd1-thresholds-api.azurewebsites.net'))
+      const { handler, logger } = setupHandlerWithLoggingStub()
+
+      await handler()
+
+      const logErrorCalls = logger.error.getCalls()
+      expect(logErrorCalls.length).to.equal(1)
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (Error: getaddrinfo ENOTFOUND imfs-prd1-thresholds-api.azurewebsites.net))')
+
+      expect(counter, 'Should only select (i.e. not delete or insert) if there is a non 400 error from API').to.equal({ select: 1 })
+    })
+    test('it should process both RLOI ids even when first encounters an IMTD 500 error', async () => {
+      const test = [
+        { rloi_id: 1001 },
+        { rloi_id: 1002 }
+      ]
+
+      const counter = setupStdDbStubs(test)
       const axiosStub = setupAxiosStdStub()
       axiosStub
         .onFirstCall().rejects({ response: { status: 500 } })
         .onSecondCall().resolves(testApiResponse)
-      const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
-      }
-      const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
-      })
+      const { handler, logger } = setupHandlerWithLoggingStub()
 
       await handler()
 
       const logInfoCalls = logger.info.getCalls()
-      Code.expect(logInfoCalls.length).to.equal(0)
+      expect(logInfoCalls.length).to.equal(1)
 
       const logErrorCalls = logger.error.getCalls()
-      Code.expect(logErrorCalls.length).to.equal(1)
-      Code.expect(logErrorCalls[0].args[0]).to.equal('Request for station 1001 failed (HTTP Status: 500)')
+      expect(logErrorCalls.length).to.equal(1)
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (HTTP Status: 500))')
 
-      const calls = queryStub.getCalls()
-      Code.expect(calls.filter(c => c.args[0].match(/^select/i)).length).to.equal(1)
-      Code.expect(calls.filter(c => c.args[0].match(/^delete/i)).length).to.equal(1)
-      Code.expect(calls.filter(c => c.args[0].match(/^insert/i)).length).to.equal(6)
-      Code.expect(calls.length).to.equal(8)
+      expect(counter).to.equal({ select: 1, begin: 1, del: 1, insert: 1, commit: 1 })
     })
-    lab.test('it should throw an error when IMTD response is not parsable (TODO)')
-    lab.test('it should throw an error when DB connection fails', async () => {
-      const { query: queryStub } = setupStdDbStubs()
-      queryStub.rejects(Error('refused'))
-      sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
+    test('it should throw an error when IMTD response is not parsable', async () => {
+      const counter = setupStdDbStubs([{ rloi_id: 1001 }])
+      setupAxiosStdStub()
       const logger = {
-        info: sinon.spy(),
-        error: sinon.spy()
+        info: sinon.stub(),
+        error: sinon.stub()
       }
+
       const { handler } = proxyquire('../../../lib/functions/imtd-process', {
-        '../helpers/logging': logger
+        '../helpers/logging': logger,
+        '../models/parse-thresholds': sinon.stub().throws(Error('Parsing Fail'))
       })
 
-      const returnedError = await Code.expect(handler()).to.reject()
-      Code.expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: refused)')
-
-      const logInfoCalls = logger.info.getCalls()
-      Code.expect(logInfoCalls.length).to.equal(0)
+      await handler()
 
       const logErrorCalls = logger.error.getCalls()
-      Code.expect(logErrorCalls.length).to.equal(0)
+      expect(logErrorCalls.length).to.equal(1)
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (Parsing Fail)')
+
+      expect(counter, 'Should only select (i.e. not delete or insert) if the IMTD response is not parsable').to.equal({ select: 1 })
+    })
+    test('it should throw an error when DB connection fails when getting RLOI id\'s', async () => {
+      tracker.on('query', function (query) {
+        query.reject(Error('refused'))
+      })
+      sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
+      const { handler, logger } = setupHandlerWithLoggingStub()
+
+      const returnedError = await expect(handler()).to.reject()
+      expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc - refused)')
+
+      const logInfoCalls = logger.info.getCalls()
+      expect(logInfoCalls.length).to.equal(0)
+
+      const logErrorCalls = logger.error.getCalls()
+      expect(logErrorCalls.length).to.equal(0)
+    })
+    test('it should log an error and rollback when DB connection fails when deleting thresholds', async () => {
+      tracker.on('query', function (query, step) {
+        [
+          () => {
+            expect(query.method).to.equal('select')
+            query.response([{ rloi_id: 1001 }])
+          },
+          () => {
+            expect(query.sql).to.equal('BEGIN;')
+            query.response()
+          },
+          () => {
+            expect(query.method).to.equal('del')
+            query.reject(Error('Delete Fail'))
+          },
+          () => {
+            expect(query.sql).to.equal('ROLLBACK')
+            query.response()
+          }
+        ][step - 1]()
+      })
+      setupAxiosStdStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
+
+      await handler()
+
+      const logErrorCalls = logger.error.getCalls()
+      expect(logErrorCalls.length).to.equal(2)
+      expect(logErrorCalls[0].args[0]).to.equal('Error processing thresholds for station 1001')
+      expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (delete from "station_imtd_threshold" where "station_id" = $1 - Delete Fail)')
+
+      const logInfoCalls = logger.info.getCalls()
+      expect(logInfoCalls.length).to.equal(0)
+    })
+    test('it should log an error and rollback when DB connection fails when inserting thresholds', async () => {
+      tracker.on('query', function (query, step) {
+        [
+          () => {
+            expect(query.method).to.equal('select')
+            query.response([{ rloi_id: 1001 }])
+          },
+          () => {
+            expect(query.sql).to.equal('BEGIN;')
+            query.response()
+          },
+          () => {
+            expect(query.method).to.equal('del')
+            query.response()
+          },
+          () => {
+            expect(query.method).to.equal('insert')
+            query.reject(Error('Insert Fail'))
+          },
+          () => {
+            expect(query.sql).to.equal('ROLLBACK')
+            query.response()
+          }
+        ][step - 1]()
+      })
+      setupAxiosStdStub()
+      const { handler, logger } = setupHandlerWithLoggingStub()
+
+      await handler()
+
+      const logErrorCalls = logger.error.getCalls()
+      expect(logErrorCalls.length).to.equal(2)
+      expect(logErrorCalls[0].args[0]).to.equal('Error processing thresholds for station 1001')
+      expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (insert into "station_imtd_threshold" ("direction", "fwis_code", "fwis_type", "station_id", "value") values ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25), ($26, $27, $28, $29, $30) - Insert Fail)')
+
+      const logInfoCalls = logger.info.getCalls()
+      expect(logInfoCalls.length).to.equal(0)
     })
   })
 })
