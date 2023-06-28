@@ -1,6 +1,6 @@
-const Code = require('@hapi/code')
+const { expect } = require('@hapi/code')
 const Lab = require('@hapi/lab')
-const lab = exports.lab = Lab.script()
+const { experiment, test } = (exports.lab = Lab.script())
 const response = require('./data/imfs-simple-response.json')
 const flowResponse = require('./data/imfs-flow-response.json')
 const parseThresholds = require('../../../lib/models/parse-thresholds')
@@ -9,12 +9,12 @@ function clone (doc) {
   return JSON.parse(JSON.stringify(doc))
 }
 
-lab.experiment('parseThresholds tests', () => {
-  lab.test('should parse thresholds from simple IMTD response', () => {
+experiment('parseThresholds tests', () => {
+  test('should parse thresholds from simple IMTD response', () => {
     const thresholds = parseThresholds(response[0].TimeSeriesMetaData)
-    Code.expect(thresholds).to.be.an.array()
-    Code.expect(thresholds.length).to.equal(3)
-    Code.expect(thresholds).to.equal([
+    expect(thresholds).to.be.an.array()
+    expect(thresholds.length).to.equal(3)
+    expect(thresholds).to.equal([
       {
         floodWarningArea: '033WAF309',
         floodWarningType: 'A',
@@ -35,12 +35,12 @@ lab.experiment('parseThresholds tests', () => {
       }
     ])
   })
-  lab.test('should parse thresholds from flow response', () => {
+  test('should parse thresholds from flow response', () => {
     const thresholds = parseThresholds(flowResponse[0].TimeSeriesMetaData)
-    Code.expect(thresholds).to.be.an.array()
-    Code.expect(thresholds.length).to.equal(16)
+    expect(thresholds).to.be.an.array()
+    expect(thresholds.length).to.equal(16)
     // use the map to make the test more concise, consider whether this is better approach than in than test above
-    Code.expect(thresholds.map(t => `2116,${t.floodWarningArea},${t.floodWarningType},${t.direction},${t.level}`)).to.equal([
+    expect(thresholds.map(t => `2116,${t.floodWarningArea},${t.floodWarningType},${t.direction},${t.level}`)).to.equal([
       '2116,034WAF414,A,u,1.7',
       '2116,034WAF415,A,u,2.4',
       '2116,034WAF414,A,u,2.6',
@@ -60,25 +60,25 @@ lab.experiment('parseThresholds tests', () => {
     ])
   })
 
-  lab.test('should parse thresholds where there are no thresholds returned', () => {
+  test('should parse thresholds where there are no thresholds returned', () => {
     const responseCopy = clone(response)
     responseCopy[0].TimeSeriesMetaData[0].Thresholds = []
     const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
-    Code.expect(thresholds).to.be.an.array()
-    Code.expect(thresholds.length).to.equal(0)
+    expect(thresholds).to.be.an.array()
+    expect(thresholds.length).to.equal(0)
   })
-  lab.test('should parse thresholds where the response has an empty TimeSeriesMetaData', () => {
+  test('should parse thresholds where the response has an empty TimeSeriesMetaData', () => {
     const responseCopy = clone(response)
     responseCopy[0].TimeSeriesMetaData = []
     const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
-    Code.expect(thresholds).to.be.an.array()
-    Code.expect(thresholds.length).to.equal(0)
+    expect(thresholds).to.be.an.array()
+    expect(thresholds.length).to.equal(0)
   })
-  lab.test('should parse thresholds where the response has no TimeSeriesMetaData', () => {
+  test('should parse thresholds where the response has no TimeSeriesMetaData', () => {
     const responseCopy = clone(response)
     delete responseCopy[0].TimeSeriesMetaData
     const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
-    Code.expect(thresholds).to.be.an.array()
-    Code.expect(thresholds.length).to.equal(0)
+    expect(thresholds).to.be.an.array()
+    expect(thresholds.length).to.equal(0)
   })
 })
