@@ -3,7 +3,6 @@
 const Lab = require('@hapi/lab')
 const { after, afterEach, before, beforeEach, experiment, test } = (exports.lab = Lab.script())
 const { expect } = require('@hapi/code')
-const event = require('../../events/imtd-event.json')
 const {
   stations: testStations,
   apiResponse: testApiResponse,
@@ -71,7 +70,7 @@ experiment('imtd processing', () => {
       const { handler } = setupHandlerWithLoggingStub()
       setupAxiosStdStub(testApiNoMatchingThresholdResponse)
       const counter = setupStdDbStubs([{ rloi_id: 1001 }])
-      await handler(event)
+      await handler()
       expect(counter).to.equal({ select: 1, del: 1 })
     })
     test('it should select, delete and insert from DB in order and with expected values', async () => {
@@ -116,13 +115,13 @@ experiment('imtd processing', () => {
 
       const { handler } = setupHandlerWithLoggingStub()
       setupAxiosStdStub()
-      await handler(event)
+      await handler()
     })
     test('for multiple RLOI ids it should select, delete and insert from DB as expected', async () => {
       const { handler } = setupHandlerWithLoggingStub()
       const counter = setupStdDbStubs()
       const axiosStub = setupAxiosStdStub()
-      await handler(event)
+      await handler()
       // 8 stations each with the same 6 thresholds (out of 10 thresholds for inclusion)
       /// 1 select, 8 deletes and 8 inserts (6 thresholds per insert)
       expect(axiosStub.callCount).to.equal(8)
@@ -133,7 +132,7 @@ experiment('imtd processing', () => {
       setupAxiosStdStub()
       const { handler, logger } = setupHandlerWithLoggingStub()
 
-      await handler(event)
+      await handler()
       const logInfoCalls = logger.info.getCalls()
       expect(logInfoCalls.length).to.equal(1)
       expect(logInfoCalls[0].args[0]).to.equal('Processed 6 thresholds for RLOI id 1001')
@@ -146,7 +145,7 @@ experiment('imtd processing', () => {
       sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
       const { handler, logger } = setupHandlerWithLoggingStub()
 
-      await handler(event)
+      await handler()
 
       const logInfoCalls = logger.info.getCalls()
       expect(logInfoCalls.length).to.equal(2)
