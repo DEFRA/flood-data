@@ -78,7 +78,8 @@ experiment('imtd processing', () => {
         [
           () => {
             expect(query.method).to.equal('select')
-            expect(query.sql).to.equal('select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc')
+            expect(query.sql).to.equal('select distinct "rloi_id" from "rivers_mview" where "rloi_id" between $1 and $2 and "rloi_id" is not null order by "rloi_id" asc')
+            expect(query.bindings).to.equal([0, 99999])
             query.response([
               { rloi_id: 1001 }
             ])
@@ -165,7 +166,7 @@ experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(1)
-      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (HTTP Status: 500))')
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD API request for station 1001 failed (HTTP Status: 500))')
 
       expect(counter, 'Should only select (i.e. not delete or insert) if there is a non 400 error from API').to.equal({ select: 1 })
     })
@@ -179,7 +180,7 @@ experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(1)
-      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (Error: getaddrinfo ENOTFOUND imfs-prd1-thresholds-api.azurewebsites.net))')
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD API request for station 1001 failed (Error: getaddrinfo ENOTFOUND imfs-prd1-thresholds-api.azurewebsites.net))')
 
       expect(counter, 'Should only select (i.e. not delete or insert) if there is a non 400 error from API').to.equal({ select: 1 })
     })
@@ -203,7 +204,7 @@ experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(1)
-      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD Request for station 1001 failed (HTTP Status: 500))')
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (IMTD API request for station 1001 failed (HTTP Status: 500))')
 
       expect(counter).to.equal({ select: 1, begin: 1, del: 1, insert: 1, commit: 1 })
     })
@@ -236,7 +237,7 @@ experiment('imtd processing', () => {
       const { handler, logger } = setupHandlerWithLoggingStub()
 
       const returnedError = await expect(handler()).to.reject()
-      expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc - refused)')
+      expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: select distinct "rloi_id" from "rivers_mview" where "rloi_id" between $1 and $2 and "rloi_id" is not null order by "rloi_id" asc - refused)')
 
       const logInfoCalls = logger.info.getCalls()
       expect(logInfoCalls.length).to.equal(0)
@@ -272,7 +273,7 @@ experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(2)
-      expect(logErrorCalls[0].args[0]).to.equal('Error processing thresholds for station 1001')
+      expect(logErrorCalls[0].args[0]).to.equal('Database error processing thresholds for station 1001')
       expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (delete from "station_imtd_threshold" where "station_id" = $1 - Delete Fail)')
 
       const logInfoCalls = logger.info.getCalls()
@@ -310,7 +311,7 @@ experiment('imtd processing', () => {
 
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(2)
-      expect(logErrorCalls[0].args[0]).to.equal('Error processing thresholds for station 1001')
+      expect(logErrorCalls[0].args[0]).to.equal('Database error processing thresholds for station 1001')
       expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (insert into "station_imtd_threshold" ("direction", "fwis_code", "fwis_type", "station_id", "value") values ($1, $2, $3, $4, $5), ($6, $7, $8, $9, $10), ($11, $12, $13, $14, $15), ($16, $17, $18, $19, $20), ($21, $22, $23, $24, $25), ($26, $27, $28, $29, $30) - Insert Fail)')
 
       const logInfoCalls = logger.info.getCalls()
