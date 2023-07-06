@@ -2,6 +2,6 @@
   "Description": "Event rule to schedule the imtdProcess lambda execution",
   "Name": "{{stage}}{{LFW_SERVICE_CODE}}ImtdProcessRule",
   "RoleArn": "{{lambdaRoleArn}}",
-  "ScheduleExpression": "cron(30 * * * ? *)",
+  "ScheduleExpression": "{{imtdThresoldRefreshSchedule}}",
   "State": "ENABLED"
 }
