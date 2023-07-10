@@ -63,5 +63,3 @@ functions:
     name: ${env:LFW_DATA_TARGET_ENV_NAME}${self:service}-imtdProcess
     handler: lib/functions/imtd-process.handler
     timeout: 900
-    memorySize: 4096
-    reservedConcurrency: 20
