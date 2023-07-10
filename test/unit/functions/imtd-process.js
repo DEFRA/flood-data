@@ -244,7 +244,7 @@ experiment('imtd processing', () => {
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(0)
     })
-    test('it should log an error and rollback when DB connection fails when deleting thresholds', async () => {
+    test('it should log an error and rollback when DB connection fails when deleting thresholds before inserting', async () => {
       tracker.on('query', function (query, step) {
         [
           () => {
@@ -273,6 +273,32 @@ experiment('imtd processing', () => {
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(2)
       expect(logErrorCalls[0].args[0]).to.equal('Database error processing thresholds for station 1001')
+      expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (delete from "station_imtd_threshold" where "station_id" = $1 - Delete Fail)')
+
+      const logInfoCalls = logger.info.getCalls()
+      expect(logInfoCalls.length).to.equal(0)
+    })
+    test('it should log an error when DB connection fails when deleting thresholds when there are no thresholds to insert', async () => {
+      tracker.on('query', function (query, step) {
+        [
+          () => {
+            expect(query.method).to.equal('select')
+            query.response([{ rloi_id: 1001 }])
+          },
+          () => {
+            expect(query.method).to.equal('del')
+            query.reject(Error('Delete Fail'))
+          }
+        ][step - 1]()
+      })
+      setupAxiosStdStub(testApiNoMatchingThresholdResponse)
+      const { handler, logger } = setupHandlerWithLoggingStub()
+
+      await handler()
+
+      const logErrorCalls = logger.error.getCalls()
+      expect(logErrorCalls.length).to.equal(2)
+      expect(logErrorCalls[0].args[0]).to.equal('Error deleting thresholds for station 1001')
       expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (delete from "station_imtd_threshold" where "station_id" = $1 - Delete Fail)')
 
       const logInfoCalls = logger.info.getCalls()
