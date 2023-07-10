@@ -78,8 +78,7 @@ experiment('imtd processing', () => {
         [
           () => {
             expect(query.method).to.equal('select')
-            expect(query.sql).to.equal('select distinct "rloi_id" from "rivers_mview" where "rloi_id" between $1 and $2 and "rloi_id" is not null order by "rloi_id" asc')
-            expect(query.bindings).to.equal([0, 99999])
+            expect(query.sql).to.equal('select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc')
             query.response([
               { rloi_id: 1001 }
             ])
@@ -237,7 +236,7 @@ experiment('imtd processing', () => {
       const { handler, logger } = setupHandlerWithLoggingStub()
 
       const returnedError = await expect(handler()).to.reject()
-      expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: select distinct "rloi_id" from "rivers_mview" where "rloi_id" between $1 and $2 and "rloi_id" is not null order by "rloi_id" asc - refused)')
+      expect(returnedError.message).to.equal('Could not get list of id\'s from database (Error: select distinct "rloi_id" from "rivers_mview" where "rloi_id" is not null order by "rloi_id" asc - refused)')
 
       const logInfoCalls = logger.info.getCalls()
       expect(logInfoCalls.length).to.equal(0)
