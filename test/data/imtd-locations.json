@@ -1,0 +1,58 @@
+[
+  {
+    "RLOIid": "1001",
+    "wiskiID": "253110011",
+    "telemetryID": "E9140",
+    "Name": "Beeding Bridge",
+    "TimeSeriesMetaData": []
+  },
+  {
+    "RLOIid": "1004",
+    "wiskiID": "253320002",
+    "telemetryID": "E9250",
+    "Name": "Hatterell Bridge",
+    "TimeSeriesMetaData": []
+  },
+  {
+    "RLOIid": "1006",
+    "wiskiID": "253220001",
+    "telemetryID": "E9130",
+    "Name": "Sakeham Weir",
+    "TimeSeriesMetaData": []
+  },
+  {
+    "RLOIid": "1009",
+    "wiskiID": "254323017",
+    "telemetryID": "E10440",
+    "Name": "Halfway Bridge",
+    "TimeSeriesMetaData": []
+  },
+  {
+    "RLOIid": "1010",
+    "wiskiID": "254310002L",
+    "telemetryID": "E29202",
+    "Name": "Hardham",
+    "TimeSeriesMetaData": []
+  },
+  {
+    "RLOIid": "1011",
+    "wiskiID": "254150011",
+    "telemetryID": "E9930",
+    "Name": "Houghton Bridge",
+    "TimeSeriesMetaData": []
+  },
+  {
+    "RLOIid": "1013",
+    "wiskiID": "254330100",
+    "telemetryID": "E10380",
+    "Name": "Lodsbridge",
+    "TimeSeriesMetaData": []
+  },
+  {
+    "RLOIid": "1014",
+    "wiskiID": "254230001",
+    "telemetryID": "E9900",
+    "Name": "New Bridge",
+    "TimeSeriesMetaData": []
+  }
+]
