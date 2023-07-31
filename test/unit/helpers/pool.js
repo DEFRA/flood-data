@@ -1,102 +1,126 @@
-const sinon = require('sinon')
-const { expect } = require('@hapi/code')
 const Lab = require('@hapi/lab')
-const { afterEach, beforeEach, describe, it } = exports.lab = Lab.script()
+const { expect } = require('@hapi/code')
+const mockDb = require('mock-knex')
+const db = require('../../../lib/helpers/db')
+const tracker = mockDb.getTracker()
+const { Pool } = require('../../../lib/helpers/pool')
+const sinon = require('sinon')
 const proxyquire = require('proxyquire')
 
-describe('DatabasePool', () => {
-  let poolStub
-  let clientStub
-  let Pool
+const { describe, it, before, after, beforeEach, afterEach } = exports.lab = Lab.script()
+
+function setupStdDbStubs (response) {
+  const queries = []
+  tracker.on('query', function (query) {
+    queries.push({ sql: query.sql, bindings: query.bindings })
+    query.response(response)
+  })
+  return { queries }
+}
+
+describe('Pool', () => {
+  before(() => {
+    mockDb.mock(db)
+  })
+
+  after(() => {
+    mockDb.unmock(db)
+  })
 
   beforeEach(() => {
-    clientStub = {
-      query: sinon.stub().resolves({ /* mocked query result */ }),
-      release: sinon.stub().resolves()
-    }
-    poolStub = {
-      connect: sinon.stub().resolves(clientStub),
-      end: sinon.stub().resolves()
-    }
-    Pool = proxyquire('../../../lib/helpers/pool', {
-      pg: { Pool: sinon.stub().returns(poolStub) }
-    }).Pool
+    tracker.install()
   })
 
   afterEach(() => {
-    sinon.restore()
+    tracker.uninstall()
   })
 
-  describe('query', () => {
-    it('should execute query using client from the pool', async () => {
-      // Arrange
-      const pool = new Pool()
-      const queryName = 'slsTelemetryStation'
-      const values = [1, 2, 'test']
+  it('should create the correct query for slsTelemetryStation', async () => {
+    const pool = new Pool()
 
-      // Act
-      await pool.query(queryName, values)
+    const { queries } = setupStdDbStubs()
 
-      // Assert
-      expect(poolStub.connect.calledOnce).to.be.true()
-      expect(clientStub.query.calledOnceWithExactly({
-        text: sinon.match(/INSERT/),
-        values
-      })).to.be.true()
-      expect(clientStub.release.calledOnce).to.be.true()
-      // array length should be 6 to match positional parameters
-    })
+    const result = await pool.query('slsTelemetryStation', ['123', 'North', 'Station 1', 'abc', false, 1.1, 2.1])
 
-    it('should execute knex query using client from the pool', async () => {
-      // Arrange
-      const pool = new Pool()
-      const queryName = 'slsTelemetryValues'
-      const values = [{ a: 1, b: 2, c: 'test' }]
-
-      // Act
-      await pool.query(queryName, values)
-
-      // Assert
-      expect(poolStub.connect.calledOnce).to.be.true()
-      // console.log( clientStub.query.getCalls() )
-      expect(clientStub.query.calledOnceWithExactly('insert into "sls_telemetry_value" ("a", "b", "c") values (1, 2, \'test\')')).to.be.true()
-      expect(clientStub.release.calledOnce).to.be.true()
-      // array length should be 6 to match positional parameters
-    })
-
-    it('should throw an error if query name is unknown', async () => {
-      // Arrange
-      const pool = new Pool()
-      const queryName = 'nonExistentQuery'
-      const values = { /* query values */ }
-
-      // Act & Assert
-      await expect(pool.query(queryName, values)).to.reject()
-      expect(poolStub.connect.calledOnce).to.be.false()
-      expect(clientStub.query.calledOnce).to.be.false()
-      expect(clientStub.release.calledOnce).to.be.false()
-    })
+    expect(result).to.equal({ rows: [] })
+    expect(queries.length).to.equal(1)
+    expect(queries[0].sql).to.equal('update "u_flood"."sls_telemetry_station" set "station_name" = EXCLUDED.station_name, "ngr" = EXCLUDED.ngr, "easting" = EXCLUDED.easting, "northing" = EXCLUDED.northing')
   })
-  describe('end', () => {
-    it('should gracefully end the connection pool', async () => {
-      // Arrange
-      const pool = new Pool()
 
-      // Act
-      await pool.end()
+  it('should create the correct query for slsTelemetryValues', async () => {
+    const pool = new Pool()
 
-      // Assert
-      expect(poolStub.end.calledOnce).to.be.true()
+    const { queries } = setupStdDbStubs()
+
+    const result = await pool.query('slsTelemetryValues', [{ col1: 1, col2: 2, col3: 'test' }])
+
+    expect(result).to.equal({ rows: [] })
+    expect(queries.length).to.equal(1)
+    expect(queries[0].sql).to.equal('insert into "sls_telemetry_value" ("col1", "col2", "col3") values ($1, $2, $3)')
+  })
+
+  it('should create the correct query for slsTelemetryValuesParent', async () => {
+    const pool = new Pool()
+
+    const { queries } = setupStdDbStubs([{ test: 1 }])
+
+    const input = [
+      'fwfidata/rloi/NWTSNWFS20210112103440355.XML',
+      Date('2023-07-24T10:03:42.942Z'),
+      6,
+      '6',
+      'North West',
+      Date('2018-06-29T10:15:00.000Z'),
+      Date('2018-06-29T11:00:00.000Z'),
+      'Water Level',
+      'Downstream Stage',
+      'mASD',
+      true,
+      '2.000',
+      '3.428',
+      'S',
+      '1.600',
+      'Instantaneous',
+      '15 min'
+    ]
+
+    const result = await pool.query('slsTelemetryValueParent', input)
+
+    expect(result).to.equal({ rows: [{ test: 1 }] })
+    expect(queries.length).to.equal(1)
+    expect(queries[0].sql).to.equal('insert into "sls_telemetry_value_parent" ("data_type", "end_timestamp", "filename", "imported", "parameter", "percentile_5", "period", "por_max_value", "post_process", "qualifier", "region", "rloi_id", "start_timestamp", "station", "station_type", "subtract", "units") values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) returning *')
+  })
+
+  it('should handle query errors', async () => {
+    const pool = new Pool()
+
+    tracker.on('query', (query) => { query.reject('Query Error') })
+
+    const returnedError = await expect(pool.query('slsTelemetryValues', [])).to.reject()
+    expect(returnedError.message).to.equal('Error querying DB (query: slsTelemetryValues, values: []):  - Query Error')
+  })
+
+  it('should end the pool', async () => {
+    const knexStub = {
+      destroy: sinon.stub()
+    }
+    const { Pool } = proxyquire('../../../lib/helpers/pool', {
+      './db': knexStub
     })
+    const pool = new Pool()
+    await pool.end()
+    expect(knexStub.destroy.calledOnce).to.equal(true)
+  })
 
-    it('should throw an error if ending the pool fails', async () => {
-      // Arrange
-      const pool = new Pool()
-      poolStub.end.rejects(new Error('Failed to end pool'))
-
-      // Act & Assert
-      await expect(pool.end()).to.reject()
-      expect(poolStub.end.calledOnce).to.be.true()
+  it('should handle pool ending errors', async () => {
+    const knexStub = {
+      destroy: sinon.stub().rejects(Error('Err123'))
+    }
+    const { Pool } = proxyquire('../../../lib/helpers/pool', {
+      './db': knexStub
     })
+    const pool = new Pool()
+    const returnedError = await expect(pool.end()).to.reject()
+    expect(returnedError.message).to.equal('Error ending pool: Err123')
   })
 })

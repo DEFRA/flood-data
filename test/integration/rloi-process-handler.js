@@ -81,7 +81,11 @@ describe('Test rloiProcess handler', () => {
   after(async ({ context }) => {
     await context.client.end()
   })
-  it('it should insert single record into DB as expected', async ({ context }) => {
+  it.skip('it should insert single record into DB as expected', async ({ context }) => {
+    // NOTE: this test is skipped as hapi and knex don't seem to play well together in that either test
+    // runs without issue individually but when both run (regardless of order) the second test in the
+    // sequence cannot connect to the DB (Error querying DB: Unable to acquire a connection)
+    // For more detail see this repo: https://github.com/neilbmclaughlin/knex-issue
     const { client } = context
     const file = fs.readFileSync('./test/data/rloi-test-single.xml', 'utf8')
     sinon.stub(s3, 'getObject')
