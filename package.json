@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/DEFRA/flood-data#readme",
   "devDependencies": {
-    "@hapi/code": "^8.0.5",
+    "@hapi/code": "^9.0.3",
     "@hapi/lab": "^25.2.0",
     "mock-knex": "^0.4.13",
     "proxyquire": "^2.1.3",
