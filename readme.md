@@ -8,7 +8,7 @@ This is a serverless project to provide the processing of data files for LFW fro
 
 ### ffoi-process
 
-Pulls in the telemetry data from the S3 bucket and processes it into the database
+Pulls in the forcast telemetry data from the S3 bucket and processes it into the database
 
 ### fgs-process
 
@@ -25,6 +25,10 @@ This Lambda will check every station in the database agaist the IMTD api and upd
 ### rloi-process
 
 brings in the observed telemtery data from the S3 bucket and processes it into the database
+
+### rloi-refresh
+
+refreshes the materialized views and clears out the old telemetry.
 
 ### station-process
 
