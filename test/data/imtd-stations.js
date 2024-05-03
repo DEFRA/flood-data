@@ -155,6 +155,6 @@ const flattenedData = [
   { stationId: 9525, floodWarningArea: '121WAF918', floodWarningType: 'A', direction: 'u', level: 0.7 },
   { stationId: 9525, floodWarningArea: '121FWF121', floodWarningType: 'W', direction: 'u', level: 0.7 },
   { stationId: 9525, floodWarningArea: '121FWF121', floodWarningType: 'W', direction: 'u', level: 1.25 }
-];
+]
 
-module.exports = { stations, apiResponse, apiNoMatchingThresholdResponse, flattenedData, api404 };
+module.exports = { stations, apiResponse, apiNoMatchingThresholdResponse, flattenedData, api404 }
