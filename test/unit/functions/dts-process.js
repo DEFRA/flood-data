@@ -155,7 +155,6 @@ experiment('DTS processing', () => {
     await handler()
 
     const logInfoCalls = logger.info.getCalls()
-    console.log('NW: ', logInfoCalls)
 
     expect(logInfoCalls.length).to.equal(3)
     expect(logInfoCalls[2].args[0]).to.equal('Station 1001 not found (HTTP Status: 404)')

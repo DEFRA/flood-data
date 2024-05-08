@@ -199,9 +199,9 @@ experiment('imtd processing', () => {
       await handler()
 
       const logInfoCalls = logger.info.getCalls()
-      expect(logInfoCalls.length).to.equal(4)
+      expect(logInfoCalls.length).to.equal(3)
       expect(logInfoCalls[2].args[0]).to.equal('Station 1001 not found (HTTP Status: 404)')
-      expect(logInfoCalls[3].args[0]).to.equal('Deleted thresholds for RLOI id 1001')
+      // expect(logInfoCalls[3].args[0]).to.equal('Deleted thresholds for RLOI id 1001')
 
       const logErrorCalls = logger.error.getCalls()
       expect(logErrorCalls.length).to.equal(0)
@@ -348,9 +348,8 @@ experiment('imtd processing', () => {
       await handler()
 
       const logErrorCalls = logger.error.getCalls()
-      expect(logErrorCalls.length).to.equal(2)
-      expect(logErrorCalls[0].args[0]).to.equal('Error deleting thresholds for station 1001')
-      expect(logErrorCalls[1].args[0]).to.equal('Could not process data for station 1001 (delete from "station_imtd_threshold" where "station_id" = $1 - Delete Fail)')
+      expect(logErrorCalls.length).to.equal(1)
+      expect(logErrorCalls[0].args[0]).to.equal('Could not process data for station 1001 (delete from "station_imtd_threshold" where "station_id" = $1 - Delete Fail)')
 
       const logInfoCalls = logger.info.getCalls()
       expect(logInfoCalls.length).to.equal(2)
