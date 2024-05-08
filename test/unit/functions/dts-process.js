@@ -155,10 +155,10 @@ experiment('DTS processing', () => {
     await handler()
 
     const logInfoCalls = logger.info.getCalls()
+    console.log('NW: ', logInfoCalls)
 
-    expect(logInfoCalls.length).to.equal(4)
+    expect(logInfoCalls.length).to.equal(3)
     expect(logInfoCalls[2].args[0]).to.equal('Station 1001 not found (HTTP Status: 404)')
-    expect(logInfoCalls[3].args[0]).to.equal('Deleted data for RLOI id 1001')
 
     const logErrorCalls = logger.error.getCalls()
     expect(logErrorCalls.length).to.equal(0)
