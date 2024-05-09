@@ -4,6 +4,7 @@ const Lab = require('@hapi/lab')
 const { after, afterEach, before, beforeEach, experiment, test } = (exports.lab = Lab.script())
 const { expect } = require('@hapi/code')
 const { validateStationData } = require('../../../lib/functions/dts-process')
+const { getImtdApiResponse } = require('../../../lib/helpers/imtd-api')
 
 const {
   stations: testStations,
@@ -147,20 +148,16 @@ experiment('DTS processing', () => {
     expect(logInfoCalls[1].args[0]).to.equal('Retrieved 1 rloi_ids')
     expect(logInfoCalls[2].args[0]).to.equal('Processed displayTimeSeries for RLOI id 1001')
   })
-  test('it should log to info when API returns 404 for a given RLOI id', async () => {
-    setupStdDbStubs([{ rloi_id: 1001 }])
+  test('it should return empty object from getImtdApiResponse when API returns 404 for a given RLOI id', async () => {
     sinon.stub(axios, 'get').rejects({ response: { status: 404 } })
-    const { handler, logger } = setupHandlerWithStubs()
 
-    await handler()
-
-    const logInfoCalls = logger.info.getCalls()
-
-    expect(logInfoCalls.length).to.equal(3)
-    expect(logInfoCalls[2].args[0]).to.equal('Station 1001 not found (HTTP Status: 404)')
-
-    const logErrorCalls = logger.error.getCalls()
-    expect(logErrorCalls.length).to.equal(0)
+    const data = await getImtdApiResponse(1001)
+    await expect(data).to.equal({})
+  })
+  test('it should return object from getImtdApiResponse when API successful returns data for a given RLOI id', async () => {
+    setupAxiosStdStub()
+    const data = await getImtdApiResponse(1001)
+    await expect(data.status).to.equal(200)
   })
   test('it should throw an error when DB connection fails when getting RLOI id\'s', async () => {
     tracker.on('query', function (query) {
