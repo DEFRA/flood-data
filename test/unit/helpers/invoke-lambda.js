@@ -23,42 +23,20 @@ lab.experiment('invokeLambda', () => {
     Code.expect(calls.length).to.equal(1)
     Code.expect(calls[0].args[0].input).to.equal({
       FunctionName: 'some-function',
-      Payload: Buffer.from(JSON.stringify({ foo: 'bar' }))
+      Payload: Buffer.from(JSON.stringify({ foo: 'bar' })),
+      InvocationType: 'Event'
     })
   })
 
-  lab.test('it should throw an error when the Lambda invocation response payload contains a FunctionError with an error message and stack trace', async () => {
-    const errorMessage = 'Lambda error'
-    const stackTrace = ['mock trace']
-    const mockResponse = {
-      FunctionError: 'Unhandled',
-      Payload: JSON.stringify({ errorMessage, stackTrace })
-    }
-
-    lambdaMock.on(InvokeCommand).resolves(mockResponse)
+  lab.test('it should throw an error when the Lambda invocation fails', async () => {
+    const mockErrorMessage = 'mock error'
+    const mockError = new Error(mockErrorMessage)
+    lambdaMock.on(InvokeCommand).rejects(mockError)
 
     const err = await Code.expect(invokeLambda('some-function', { foo: 'bar' })).to.reject()
     const invokeCalls = lambdaMock.commandCalls(InvokeCommand)
     Code.expect(invokeCalls).to.have.length(1)
     Code.expect(lambdaMock.send.calledOnce).to.be.true()
-    Code.expect(err.message).to.equal(errorMessage)
-    Code.expect(err.stack).to.equal(stackTrace)
-  })
-
-  lab.test('it should throw an error when the Lambda invocation response payload contains a FunctionError without an error message and stack trace', async () => {
-    const errorMessage = 'Lambda invocation failed'
-    const mockResponse = {
-      FunctionError: 'Unhandled',
-      Payload: JSON.stringify({})
-    }
-
-    lambdaMock.on(InvokeCommand).resolves(mockResponse)
-
-    const err = await Code.expect(invokeLambda('some-function', { foo: 'bar' })).to.reject()
-    const invokeCalls = lambdaMock.commandCalls(InvokeCommand)
-    Code.expect(invokeCalls).to.have.length(1)
-    Code.expect(lambdaMock.send.calledOnce).to.be.true()
-    Code.expect(err.message).to.equal(errorMessage)
-    Code.expect(err.stack).to.contain(errorMessage)
+    Code.expect(err.message).to.equal(mockErrorMessage)
   })
 })
