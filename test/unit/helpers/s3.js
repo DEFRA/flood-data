@@ -22,12 +22,13 @@ lab.experiment('S3 Wrapper Module', () => {
   })
 
   lab.test('getObject should send GetObjectCommand with correct params', async () => {
+    const mockedBody = new Uint8Array(Buffer.from('mocked-body'))
     const params = { Bucket: 'test-bucket', Key: 'test-key' }
-    s3Mock.on(GetObjectCommand).resolves({ Body: 'mocked-body' })
+    s3Mock.on(GetObjectCommand).resolves({ Body: mockedBody })
 
     const result = await s3Wrapper.getObject(params)
 
-    Code.expect(result.Body).to.equal('mocked-body')
+    Code.expect(result.Body).to.equal(mockedBody)
     Code.expect(s3Mock.commandCalls(GetObjectCommand, params).length).to.equal(1)
   })
 
