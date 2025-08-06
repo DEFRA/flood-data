@@ -15,17 +15,10 @@ const { Client } = require('pg')
 const sinon = require('sinon').createSandbox()
 
 lab.experiment('FFOI processing', () => {
-  let mockResponse
-
   lab.beforeEach(async () => {
     // setup mocks
-    mockResponse = {
-      Body: {
-        transformToString: sinon.stub()
-      }
-    }
     sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve(mockResponse)
+      return Promise.resolve({})
     })
     sinon.stub(util, 'parseXml').callsFake(() => {
       return Promise.resolve({})
@@ -49,7 +42,6 @@ lab.experiment('FFOI processing', () => {
   })
 
   lab.test('ffoi process', async () => {
-    mockResponse.Body.transformToString.resolves('<xml></xml>')
     await handler(event)
   })
 

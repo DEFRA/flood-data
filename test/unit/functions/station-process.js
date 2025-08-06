@@ -12,18 +12,14 @@ const { Client } = require('pg')
 const sinon = require('sinon').createSandbox()
 
 lab.experiment('station processing', () => {
-  let mockResponse
-
   lab.beforeEach(() => {
     // setup mocks
-    mockResponse = {
-      Body: {
-        transformToString: sinon.stub()
-      }
-    }
-
     sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve(mockResponse)
+      return new Promise((resolve, reject) => {
+        resolve({
+          Body: 'test'
+        })
+      })
     })
     sinon.stub(util, 'parseCsv').callsFake(() => {
       return Promise.resolve({})
@@ -49,7 +45,6 @@ lab.experiment('station processing', () => {
     sinon.restore()
   })
   lab.test('station process', async () => {
-    mockResponse.Body.transformToString.resolves('test')
     await handler(event)
   })
 
