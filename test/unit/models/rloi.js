@@ -11,6 +11,8 @@ const station = require('../../data/station.json')
 const station2 = require('../../data/station2.json')
 const coastalStation = require('../../data/station-coastal.json')
 const sinon = require('sinon')
+const { mockClient } = require('aws-sdk-client-mock')
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3')
 const {
   valuesSchemaQueryMatcher,
   valuesSchemaVarsMatcher,
@@ -39,11 +41,23 @@ function getStubbedDbHelper () {
 }
 
 lab.experiment('rloi model', () => {
+  let s3Mock
+  let mockResponse
+
   lab.beforeEach(() => {
     // setup mocks
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve({ Body: JSON.stringify(station) })
-    })
+
+    s3Mock = mockClient(S3Client)
+    s3Mock.reset()
+
+    mockResponse = {
+      Body: {
+        transformToString: sinon.stub()
+      }
+    }
+
+    mockResponse.Body.transformToString.resolves(JSON.stringify(station))
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
   })
 
   lab.afterEach(() => {
@@ -64,9 +78,8 @@ lab.experiment('rloi model', () => {
 
   lab.test('RLOI process no station match', async () => {
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve()
-    })
+    mockResponse.Body.transformToString.resolves('')
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
@@ -101,9 +114,8 @@ lab.experiment('rloi model', () => {
 
   lab.test('RLOI process no station', async () => {
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve({ Body: JSON.stringify(station2) })
-    })
+    mockResponse.Body.transformToString.resolves(JSON.stringify(station2))
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
@@ -111,9 +123,8 @@ lab.experiment('rloi model', () => {
 
   lab.test('RLOI process no station', async () => {
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve({ Body: JSON.stringify(coastalStation) })
-    })
+    mockResponse.Body.transformToString.resolves(coastalStation)
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
@@ -143,9 +154,8 @@ lab.experiment('rloi model', () => {
     const stationClone = clone(station)
     stationClone.Subtract = 0.5
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve({ Body: JSON.stringify(stationClone) })
-    })
+    mockResponse.Body.transformToString.resolves(JSON.stringify(stationClone))
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
 
     const client = getStubbedDbHelper()
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
@@ -205,9 +215,8 @@ lab.experiment('rloi model', () => {
     const stationClone = clone(station)
     stationClone.Subtract = 'blah'
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve({ Body: JSON.stringify(stationClone) })
-    })
+    mockResponse.Body.transformToString.resolves(JSON.stringify(stationClone))
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
 
     const client = getStubbedDbHelper()
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
@@ -230,9 +239,8 @@ lab.experiment('rloi model', () => {
     const stationClone = clone(station)
     stationClone.Subtract = ''
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve({ Body: JSON.stringify(stationClone) })
-    })
+    mockResponse.Body.transformToString.resolves(JSON.stringify(stationClone))
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
     const client = getStubbedDbHelper()
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
     sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
@@ -251,9 +259,8 @@ lab.experiment('rloi model', () => {
 
   lab.test('Rainfall station and value is stored in DB and station name postfix is removed', async () => {
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve()
-    })
+    mockResponse.Body.transformToString.resolves('')
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-rainfall-postfix.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
@@ -276,9 +283,8 @@ lab.experiment('rloi model', () => {
 
   lab.test('Rainfall station and value is stored in DB and station name without postfix', async () => {
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve()
-    })
+    mockResponse.Body.transformToString.resolves('')
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-rainfall.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
@@ -301,9 +307,8 @@ lab.experiment('rloi model', () => {
 
   lab.test('Rainfall station and value is stored in DB and station name with postfix in middle of name', async () => {
     sinon.restore()
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve()
-    })
+    mockResponse.Body.transformToString.resolves('')
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
     const client = getStubbedDbHelper()
     const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-rainfall-postfix-middle.xml'))
     await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
