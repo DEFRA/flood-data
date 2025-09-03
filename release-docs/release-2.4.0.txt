@@ -1,0 +1,12 @@
+#Flood-data release 2.4.0 - 4th September 2025
+
+Update aws-sdk to latest version
+
+# Tickets
+
+- FSR-1136 | Update aws-sdk to latest version for CFF 
+
+
+# Deployment
+
+See release notes for 8.20.0 in flood-app

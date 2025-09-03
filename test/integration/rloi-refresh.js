@@ -1,19 +1,27 @@
 'use strict'
 const Lab = require('@hapi/lab')
 const lab = exports.lab = Lab.script()
-const AWS = require('aws-sdk')
-AWS.config.update({ region: process.env.LFW_DATA_TARGET_REGION })
-const lambda = new AWS.Lambda()
+const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda')
 
-lab.experiment('Test rloirefresh lambda invoke', () => {
+const lambdaClient = new LambdaClient({
+  region: process.env.LFW_DATA_TARGET_REGION
+})
+
+lab.experiment('Test rloiRefresh lambda invoke', () => {
   lab.test('rloiRefresh invoke', async () => {
-    const data = await lambda.invoke({ FunctionName: `${process.env.LFW_DATA_TARGET_ENV_NAME}${process.env.LFW_DATA_SERVICE_CODE}-rloiRefresh` }).promise()
+    const command = new InvokeCommand({
+      FunctionName: `${process.env.LFW_DATA_TARGET_ENV_NAME}${process.env.LFW_DATA_SERVICE_CODE}-rloiRefresh`
+    })
+
+    const data = await lambdaClient.send(command)
+
     if (data.StatusCode !== 200) {
-      throw new Error('rloirefresh non 200 response')
+      throw new Error('rloiRefresh non 200 response')
     }
-    const payload = JSON.parse(data.Payload)
-    if (payload && payload.errorMessage) {
-      throw new Error('rloirefresh error returned: ' + payload.errorMessage)
+
+    if (data.FunctionError) {
+      const payload = JSON.parse(Buffer.from(data.Payload).toString())
+      throw new Error('rloiRefresh error returned: ' + (payload?.errorMessage || 'Unknown error'))
     }
   })
 })
