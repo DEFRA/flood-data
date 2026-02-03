@@ -1,0 +1,55 @@
+LocalStack Integration: ffoi-process
+  [32m✔[0m [90m1) invokes ffoi-process with S3 event (6071 ms)[0m
+FWIS Process - LocalStack Integration
+  [31m✖ 2) invokes fwis-process lambda successfully[0m
+  [32m✔[0m [90m3) handles fixture data correctly (154 ms)[0m
+LocalStack Integration: fwis-process
+  [31m✖ 4) invokes fwis-process lambda successfully[0m
+RLOI Process - LocalStack Integration
+  [31m✖ 5) invokes rloi-process lambda with S3 event[0m
+  [31m✖ 6) processes XML data from LocalStack S3[0m
+LocalStack Integration: rloi-process
+  [31m✖ 7) invokes rloi-process with S3 event[0m
+
+
+Failed tests:
+
+  2) FWIS Process - LocalStack Integration invokes fwis-process lambda successfully:
+
+      [31mExpected 'Unhandled' to not exist[0m
+
+[90m      at /home/geordiefoo83/Projects/Flood/flood-data/test/integration/localstack/fwis-process.js:26:43[0m
+
+  4) LocalStack Integration: fwis-process invokes fwis-process lambda successfully:
+
+      [31mExpected 'Unhandled' to not exist[0m
+
+[90m      at /home/geordiefoo83/Projects/Flood/flood-data/test/integration/localstack/fwis-process.test.js:23:43[0m
+
+  5) RLOI Process - LocalStack Integration invokes rloi-process lambda with S3 event:
+
+      [31mLambda failed: {"errorType":"error","errorMessage":"password authentication failed for user \"test\"","trace":["error: password authentication failed for user \"test\"","    at /var/task/node_modules/pg-pool/index.js:45:11","    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)","    at async DatabasePool.query (/var/task/lib/helpers/pool.js:15:20)","    at async /var/task/lib/models/rloi.js:142:15","    at async Promise.all (index 0)","    at async Object.save (/var/task/lib/models/rloi.js:113:9)","    at async module.exports.handler (/var/task/lib/functions/rloi-process.js:26:3)"]}[0m
+
+[90m      at /home/geordiefoo83/Projects/Flood/flood-data/test/integration/localstack/rloi-process.js:45:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Immediate.<anonymous> (/home/geordiefoo83/Projects/Flood/flood-data/node_modules/@hapi/lab/lib/runner.js:661:21)[0m
+
+  6) RLOI Process - LocalStack Integration processes XML data from LocalStack S3:
+
+      [31mExpected 'Unhandled' to not exist[0m
+
+[90m      at /home/geordiefoo83/Projects/Flood/flood-data/test/integration/localstack/rloi-process.js:76:43[0m
+
+  7) LocalStack Integration: rloi-process invokes rloi-process with S3 event:
+
+      [31mLambda invocation failed: password authentication failed for user "postgres"[0m
+
+[90m      at /home/geordiefoo83/Projects/Flood/flood-data/test/integration/localstack/rloi-process.test.js:36:13
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Immediate.<anonymous> (/home/geordiefoo83/Projects/Flood/flood-data/node_modules/@hapi/lab/lib/runner.js:661:21)[0m
+
+
+[31m5 of 7 tests failed[0m
+Test duration: 49138 ms
+Leaks: [32mNo issues[0m
+

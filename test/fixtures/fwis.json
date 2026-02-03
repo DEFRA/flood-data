@@ -1,0 +1,10 @@
+{
+  "warnings": [
+    {
+      "id": "123",
+      "severity": "Severe Flood Warning",
+      "area": "River Tyne",
+      "issued": "2026-01-08T12:00:00Z"
+    }
+  ]
+}

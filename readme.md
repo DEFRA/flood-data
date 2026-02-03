@@ -38,12 +38,62 @@ Uses the exports context file from sharepoint to update the stations in the data
 
 ## Local development
 
-This will use [localstack](https://docs.localstack.cloud/) and the supporting
-files and documentation to follow.
+### Quick Start
+
+```bash
+# Clone and install
+git clone <repository-url>
+cd flood-data
+npm install
+
+# Run unit tests (fast, no Docker required)
+npm test
+```
+
+### Testing
+
+This project has two testing approaches:
+
+**Unit Tests** (npm test) - Daily development
+- Fast (~1 second)
+- No Docker required
+- All dependencies mocked
+- Run before every commit
+
+**LocalStack Integration Tests** (npm run localstack-test) - Pre-deployment
+- Slower (~30-60 seconds)
+- Requires Docker, LocalStack, PostgreSQL
+- Tests full Lambda execution with S3/DB
+- Run before deploying to AWS
+
+### Documentation
+
+- **[Getting Started](docs/local-development/GETTING_STARTED.md)** - Setup guide for new developers
+- **[LocalStack Testing](docs/local-development/LOCALSTACK_TESTING.md)** - Integration test setup
+- **[Quick Reference](docs/local-development/QUICK_REFERENCE.md)** - Common commands
+- **[Manual Setup](docs/local-development/manual.md)** - Advanced LocalStack usage
+
+For detailed instructions, see [docs/local-development/](docs/local-development/).
 
 ## Deployment
 
 This is installed using terraforms/terragrunt which is managed by WebOps
+
+## Testing
+
+### Unit Tests
+```bash
+npm test
+```
+Runs fast unit tests with all dependencies mocked. No Docker required.
+
+### Integration Tests
+```bash
+npm run localstack-test
+```
+Runs integration tests against LocalStack (local AWS). Requires Docker setup.
+
+See [docs/local-development/](docs/local-development/) for setup instructions.
 
 ## Unit tests and linting
 `npm run pre-deployment-test`
