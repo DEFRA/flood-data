@@ -55,4 +55,35 @@ lab.experiment('rloi processing', () => {
     }
     await Code.expect(handler(event)).to.reject()
   })
+
+  lab.test('rloi process with async iterator stream', async () => {
+    // Mock an async iterator stream like Node.js would provide (without transformToString)
+    const chunks = ['<xml>', '</xml>']
+    mockResponse.Body = {
+      transformToString: 'not a function', // Explicitly not a function
+      [Symbol.asyncIterator]: async function * () {
+        for (const chunk of chunks) {
+          yield chunk
+        }
+      }
+    }
+    
+    await handler(event)
+    Code.expect(util.parseXml.calledWith('<xml></xml>')).to.be.true()
+  })
+
+  lab.test('rloi process throws error when Body has no valid method', async () => {
+    // Mock a Body without transformToString or async iterator
+    mockResponse.Body = {
+      transformToString: null, // Explicitly not a function
+      [Symbol.asyncIterator]: null // Explicitly not a function
+    }
+    await Code.expect(handler(event)).to.reject(Error, 'data.Body is not async iterable and has no transformToString method')
+  })
+
+  lab.test('rloi process throws error when Body is null', async () => {
+    // Mock a response with null Body
+    mockResponse.Body = null
+    await Code.expect(handler(event)).to.reject(Error, 'data.Body is not async iterable and has no transformToString method')
+  })
 })
