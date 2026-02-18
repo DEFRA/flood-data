@@ -67,7 +67,7 @@ lab.experiment('rloi processing', () => {
         }
       }
     }
-    
+
     await handler(event)
     Code.expect(util.parseXml.calledWith('<xml></xml>')).to.be.true()
   })
