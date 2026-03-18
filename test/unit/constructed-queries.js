@@ -86,6 +86,9 @@ describe('constructedQueries', () => {
 
       // Assert
       expect(actual.text).to.match(/INSERT INTO sls_telemetry_value_parent/)
+      expect(actual.text).to.match(/ON CONFLICT \(station, region, COALESCE\(qualifier, ''\), start_timestamp, end_timestamp\)/)
+      expect(actual.text).to.match(/WHERE lower\(parameter\) = 'rainfall'/)
+      expect(actual.text).to.match(/DO NOTHING/)
       expect(actual.values).to.equal(values)
     })
   })
