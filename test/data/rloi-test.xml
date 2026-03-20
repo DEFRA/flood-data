@@ -12,7 +12,10 @@
 			<Value date="2021-01-12" time="10:30:00">0.0</Value>
 		</SetofValues>
 	</Station>
-		<Station stationReference="1" region="TestRegion" stationName="Langley Bottom" ngr="SJ949714">
+		<Station stationReference="9001" region="TestRegion" stationName="Langley Bottom" ngr="SJ949714">
+		<SetofValues parameter="Rainfall" qualifier="Tipping Bucket Raingauge" dataType="Total" period="16 min" units="mm" startDate="2021-01-12" startTime="10:30:00" endDate="2021-01-12" endTime="10:30:00">
+			<Value date="2021-01-12" time="10:30:00">0.0</Value>
+		</SetofValues>
 		<SetofValues parameter="Rainfall" qualifier="Tipping Bucket Raingauge" dataType="Total" period="15 min" units="mm" startDate="2021-01-12" startTime="10:30:00" endDate="2021-01-12" endTime="10:30:00">
 			<Value date="2021-01-12" time="10:30:00">0.0</Value>
 		</SetofValues>

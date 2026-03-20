@@ -305,6 +305,24 @@ lab.experiment('rloi model', () => {
     sinon.assert.calledOnceWithExactly(client.query.withArgs(stationSchemaQueryMatcher), 'slsTelemetryStation', expectedStationQuery.values)
   })
 
+  lab.test('Rainfall duplicate parent should skip telemetry value insert', async () => {
+    sinon.restore()
+    mockResponse.Body.transformToString.resolves('')
+    s3Mock.on(GetObjectCommand).resolves(mockResponse)
+
+    const client = getStubbedDbHelper()
+    client.query
+      .withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher)
+      .resolves({ rows: [] })
+
+    const file = await parseStringPromise(fs.readFileSync('./test/data/rloi-test-rainfall.xml'))
+    await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
+
+    sinon.assert.callCount(client.query.withArgs(stationSchemaQueryMatcher, stationSchemaVarsMatcher), 1)
+    sinon.assert.callCount(client.query.withArgs(valueParentSchemaQueryMatcher, valueParentSchemaVarsMatcher), 1)
+    sinon.assert.callCount(client.query.withArgs(valuesSchemaQueryMatcher), 0)
+  })
+
   lab.test('Rainfall station and value is stored in DB and station name with postfix in middle of name', async () => {
     sinon.restore()
     mockResponse.Body.transformToString.resolves('')
