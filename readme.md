@@ -41,6 +41,65 @@ Uses the exports context file from sharepoint to update the stations in the data
 This will use [localstack](https://docs.localstack.cloud/) and the supporting
 files and documentation to follow.
 
+## Local Debugging - RLOI Process
+
+To test the `rloi-process` Lambda locally against a real database, use the debug runner:
+
+### Setup
+
+1. Ensure your local database is running (PostgreSQL at `127.0.0.1:5433`)
+2. Set the database connection:
+   ```bash
+   export LFW_DATA_DB_CONNECTION=postgres://u_flood:secret@127.0.0.1:5433/temp_flood_db
+   ```
+
+### Running Single Debug Session
+
+```bash
+# Automatically generates a unique station reference each run
+DEBUG_XML_FILE="./test/data/rloi-test.xml" node test/debug-rloi-local.js
+
+# Or use a fixed station reference to test idempotency
+DEBUG_STATION_REF="TEST_STATION_001" DEBUG_XML_FILE="./test/data/rloi-test.xml" node test/debug-rloi-local.js
+```
+
+### Testing Duplicate Detection
+
+To verify that `ON CONFLICT DO NOTHING` correctly prevents duplicate rainfall inserts across separate XML files:
+
+```bash
+bash test/test-duplicate-detection.sh
+```
+
+This script runs two consecutive imports with the same station reference and rainfall data. Expected behavior:
+- **Run 1**: Rainfall parent inserted (1 row affected)
+- **Run 2**: Duplicate blocked, logged as: `Duplicate telemetry parent skipped: ...`
+
+### Using VS Code Debugger
+
+Add this configuration to `.vscode/launch.json` (not committed to git):
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "debug rloiProcess (local DB)",
+      "program": "${workspaceFolder}/test/debug-rloi-local.js",
+      "env": {
+        "LFW_DATA_DB_CONNECTION": "postgres://u_flood:secret@127.0.0.1:5433/temp_flood_db",
+        "DEBUG_STATION_REF": "DEBUG_TEST_001",
+        "DEBUG_XML_FILE": "./test/data/rloi-test.xml"
+      }
+    }
+  ]
+}
+```
+
+Then press `F5` to start debugging with breakpoints.
+
 ## Deployment
 
 This is installed using terraforms/terragrunt which is managed by WebOps
