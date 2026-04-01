@@ -78,6 +78,7 @@ Sensitive or shared configuration values are stored securely in AWS Secrets Mana
 ```bash
 export LFW_DATA_FWIS_API_URL=
 export LFW_DATA_FWIS_API_KEY=
+export LFW_DATA_FGS_KEY=
 ```
 
 If you need updates to these secrets, please contact WebOps.
