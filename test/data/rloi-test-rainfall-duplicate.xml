@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="yes"?>
+<EATimeSeriesDataExchangeFormat xmlns="http://www.environment-agency.gov.uk/XMLSchemas/EATimeSeriesDataExchangeFormat" xmlns:md="http://www.environment-agency.gov.uk/XMLSchemas/EAMetadataFormat" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.environment-agency.gov.uk/XMLSchemas/EATimeSeriesDataExchangeFormat EATimeSeriesDataExchangeFormat.xsd">
+	<md:Publisher>Environment Agency</md:Publisher>
+	<md:Source>EA South East Regional Telemetry System (Duplicate)</md:Source>
+	<md:Description>Automated telemetry data export process</md:Description>
+	<md:Creator>SCX 6</md:Creator>
+	<md:Date>2018-06-29</md:Date>
+	<md:Time>11:03:48</md:Time>
+	<md:Identifier>SEKMHSCXAS1-DUP</md:Identifier>
+	<Station stationReference="1" region="TestRegion" stationName="Langley Bottom" ngr="SJ949714">
+		<SetofValues parameter="Rainfall" qualifier="Tipping Bucket Raingauge" dataType="Total" period="15 min" units="mm" startDate="2021-01-12" startTime="10:30:00" endDate="2021-01-12" endTime="10:30:00">
+			<Value date="2021-01-12" time="10:30:00">0.0</Value>
+		</SetofValues>
+	</Station>
+</EATimeSeriesDataExchangeFormat>
