@@ -85,8 +85,8 @@ describe('Test rloiProcess handler', () => {
     const { client } = context
     const file = fs.readFileSync('./test/data/rloi-test-single.xml', 'utf8')
     sinon.stub(s3, 'getObject')
-      .onFirstCall().resolves({ Body: file })
-      .onSecondCall().resolves({ Body: JSON.stringify(station) })
+      .onFirstCall().resolves({ Body: { transformToString: async () => file } })
+      .onSecondCall().resolves({ Body: { transformToString: async () => JSON.stringify(station) } })
     expect(await getCounts(client)).to.equal({ stations: 0, parents: 0, values: 0, valueParents: 0 })
     await handler(event)
     // await rloi.save(file, 's3://devlfw', 'testkey', client, s3)
@@ -123,7 +123,7 @@ describe('Test rloiProcess handler', () => {
       .withArgs({
         Bucket: event.Records[0].s3.bucket.name,
         Key: event.Records[0].s3.object.key
-      }).resolves({ Body: telemetryResponse })
+      }).resolves({ Body: { transformToString: async () => telemetryResponse } })
       .withArgs(sinon.match({
         Bucket: event.Records[0].s3.bucket.name,
         Key: sinon.match(/^rloi\/.*\/.*\/station\.json/)
@@ -135,7 +135,7 @@ describe('Test rloiProcess handler', () => {
         // Note that all other station properties remain fixed for all responses
         const rloiId = x.Key.split('/')[2]
         return {
-          Body: JSON.stringify({ ...station, RLOI_ID: rloiId })
+          Body: { transformToString: async () => JSON.stringify({ ...station, RLOI_ID: rloiId }) }
         }
       })
     const dateReviver = (key, value) => key.endsWith('_timestamp') ? new Date(value) : value
