@@ -5,6 +5,11 @@
 
 set -e
 
+# Ensure we're running from the repo root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$REPO_ROOT"
+
 STATION_REF="TEST_DUP_12345"
 DB_CONNECTION="postgres://u_flood:secret@127.0.0.1:5433/temp_flood_db"
 

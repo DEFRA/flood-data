@@ -1,6 +1,7 @@
 'use strict'
 
 const fs = require('fs')
+const path = require('path')
 const proxyquire = require('proxyquire')
 
 async function main () {
@@ -25,7 +26,11 @@ async function main () {
   }
 
   // By default use rloi-test.xml, but allow override via DEBUG_XML_FILE
-  const xmlFile = process.env.DEBUG_XML_FILE || './test/data/rloi-test.xml'
+  // Always resolve from repo root to allow running from anywhere
+  const rootDir = path.join(__dirname, '..')
+  const xmlFileArg = process.env.DEBUG_XML_FILE || './test/data/rloi-test.xml'
+  const xmlFile = path.join(rootDir, xmlFileArg)
+  
   let telemetryXml = fs.readFileSync(xmlFile, 'utf8')
   telemetryXml = telemetryXml.replace(/stationReference="[^"]*"/g, `stationReference="${stationRef}"`)
 
@@ -51,7 +56,7 @@ async function main () {
 
   console.log('Running local rloi debug with:')
   console.log(`  stationReference=${stationRef}`)
-  console.log(`  xmlFile=${xmlFile}`)
+  console.log(`  xmlFile=${xmlFileArg}`)
   console.log('  Note: Set DEBUG_STATION_REF to fixed value to test duplicates across files')
   await handler(event)
   console.log('rloi debug run complete')
