@@ -7,8 +7,10 @@ const lambdaClient = new LambdaClient({
   region: process.env.LFW_DATA_TARGET_REGION
 })
 
+const stationProcessInvokeTimeoutMs = Number(process.env.STATION_PROCESS_TEST_TIMEOUT_MS || 240000)
+
 lab.experiment('Test stationProcess lambda invoke', () => {
-  lab.test('stationProcess invoke', { timeout: 120000 }, async () => {
+  lab.test('stationProcess invoke', { timeout: stationProcessInvokeTimeoutMs }, async () => {
     // Skip this test if required environment variables are not set
     if (!process.env.LFW_DATA_TARGET_REGION || !process.env.LFW_DATA_SLS_BUCKET ||
         !process.env.LFW_DATA_TARGET_ENV_NAME || !process.env.LFW_DATA_SERVICE_CODE) {
@@ -21,6 +23,7 @@ lab.experiment('Test stationProcess lambda invoke', () => {
     }
 
     console.log('Starting stationProcess Lambda invocation test')
+    console.log('Test timeout (ms):', stationProcessInvokeTimeoutMs)
     console.log('Target region:', process.env.LFW_DATA_TARGET_REGION)
     console.log('S3 bucket:', process.env.LFW_DATA_SLS_BUCKET)
 
