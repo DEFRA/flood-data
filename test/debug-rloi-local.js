@@ -30,7 +30,7 @@ async function main () {
   const rootDir = path.join(__dirname, '..')
   const xmlFileArg = process.env.DEBUG_XML_FILE || './test/data/rloi-test.xml'
   const xmlFile = path.join(rootDir, xmlFileArg)
-  
+
   let telemetryXml = fs.readFileSync(xmlFile, 'utf8')
   telemetryXml = telemetryXml.replace(/stationReference="[^"]*"/g, `stationReference="${stationRef}"`)
 
