@@ -13,3 +13,4 @@ jobs:
             uses: ryanvade/enforce-pr-title-style-action@v1
             with:
               projectKey: FSR
+              
