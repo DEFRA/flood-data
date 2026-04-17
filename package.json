@@ -26,7 +26,7 @@
   "homepage": "https://github.com/DEFRA/flood-data#readme",
   "devDependencies": {
     "@hapi/code": "9.0.3",
-    "@hapi/lab": "26.0.0",
+    "@hapi/lab": "26.0.1",
     "aws-sdk-client-mock": "4.1.0",
     "husky": "9.1.7",
     "mock-knex": "0.4.13",
