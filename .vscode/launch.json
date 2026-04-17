@@ -19,20 +19,6 @@
              "./test/events/ffoi-event.json"
          ]
      },
-     {
-       "type": "node",
-       "request": "launch",
-       "name": "run rloiProcess function",
-       "program": "${workspaceFolder}/node_modules/.bin/sls",
-       "args": [
-           "invoke",
-           "local",
-           "-f",
-           "rloiProcess",
-           "--path",
-           "./test/events/rloi-event.json"
-       ]
-   },
    {
        "type": "node",
        "request": "launch",
