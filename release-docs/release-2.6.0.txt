@@ -1,0 +1,14 @@
+#Flood-data release 2.6.0 - 7th May 2026
+
+Update NPM dependencies and add API key to FGS API
+
+# Tickets
+
+- FSR-1615 | Update FGS to use new API key 
+- FSR-1624 | Update flood-data repository workflows to protect against npm worm attacks
+- FSR-1632 | NPM updates
+
+
+# Deployment
+
+See release notes 8.29.0 flood-app deployment version
