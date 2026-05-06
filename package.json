@@ -45,7 +45,7 @@
     "directly": "2.0.6",
     "joi": "18.1.2",
     "knex": "3.2.9",
-    "moment-timezone": "0.6.1",
+    "moment-timezone": "0.6.2",
     "ngr-to-bng": "0.0.1",
     "pg": "8.20.0",
     "verror": "1.10.1",
