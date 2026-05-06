@@ -28,7 +28,7 @@ jobs:
           node-version-file: '.nvmrc'
 
       - name: Install dependencies
-        run: npm ci --engine-strict
+        run: npm ci --ignore-scripts --engine-strict
         
       - name: Setup version env vars
         run: |
