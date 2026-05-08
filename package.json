@@ -44,7 +44,7 @@
     "csvtojson": "2.0.14",
     "directly": "2.0.6",
     "joi": "18.1.2",
-    "knex": "3.2.9",
+    "knex": "3.2.10",
     "moment-timezone": "0.6.1",
     "ngr-to-bng": "0.0.1",
     "pg": "8.20.0",
