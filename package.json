@@ -43,7 +43,7 @@
     "axios": "1.15.0",
     "csvtojson": "2.0.14",
     "directly": "2.0.6",
-    "joi": "18.1.2",
+    "joi": "18.2.1",
     "knex": "3.2.9",
     "moment-timezone": "0.6.1",
     "ngr-to-bng": "0.0.1",
