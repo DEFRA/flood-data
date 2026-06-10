@@ -71,7 +71,7 @@ jobs:
           git push origin $RELEASE_BRANCH
 
       - name: Generate Release Notes
-        uses: defra/release-notes-action@v1
+        uses: defra/release-notes-action@5daed6359429ebddc7cf3e64a107272d8b7ecb5d
         with:
           template-file: './release-docs/template.njk'
           output-file: './release-docs/CFF-${{ env.VERSION }}.md'
