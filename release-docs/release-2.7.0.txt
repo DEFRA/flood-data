@@ -1,0 +1,12 @@
+#Flood-data release 2.7.0 - 22th July 2026
+
+Update lambdas to Node.js 24 runtime
+
+# Tickets
+
+- Update flood-data to Node.js 24 runtime
+
+
+# Deployment
+
+See release notes 9.0.0 flood-app deployment version
