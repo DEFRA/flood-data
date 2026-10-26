@@ -1,0 +1,13 @@
+#Flood-data release 2.7.1 - 28th Octomer 2026
+
+Update Node.js dependencies
+
+# Tickets
+
+- FSR-1738 - flood-data dependency updates
+- FSR-1663 - Add GitHub Co-pilot exclusions to application repositories
+
+
+# Deployment
+
+See release notes 9.1.1 flood-app deployment version
