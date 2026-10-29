@@ -32,6 +32,10 @@ brings in the observed telemtery data from the S3 bucket and processes it into t
 
 refreshes the materialized views and clears out the old telemetry.
 
+### telemetry-history
+
+Runs `u_flood.update_telemetry_history()` to maintain historical telemetry. Its schedule is configured separately in Terraform and should run at every day but at a minimum must run at least once every 5 days. This function will also clear any historical data over 3 years old.
+
 ### station-process
 
 Uses the exports context file from sharepoint to update the stations in the database.
@@ -91,6 +95,7 @@ Cron configurations (e.g., thresholds, data syncs) are managed per environment v
 export LFW_DATA_IMTD_THRESHOLD_SCHEDULE=
 export LFW_DATA_DTS_SCHEDULE=
 export LFW_DATA_FWIS_SCHEDULE=
+export LFW_DATA_TELEMETRY_HISTORY_SCHEDULE=
 ```
 
 These are defined in the Terraform modules and should be updated through the infrastructure as code process.

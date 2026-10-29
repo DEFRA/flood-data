@@ -1,7 +1,7 @@
 const { expect } = require('@hapi/code')
 const Lab = require('@hapi/lab')
 const {
-  slsTelemetryValues, slsTelemetryStation, slsTelemetryValueParent, deleteOldTelemetry, refreshStationMviews,
+  slsTelemetryValues, slsTelemetryStation, slsTelemetryValueParent, deleteOldTelemetry, updateTelemetryHistory, refreshStationMviews,
   deleteStations, insertStations, upsertFfoiMax, deleteCurrentFwis, insertFloodWarnings, refreshFloodWarningsMview,
   updateTimestamp
 } = require('../../lib/constructed-queries')
@@ -97,6 +97,17 @@ describe('constructedQueries', () => {
 
       // Assert
       expect(actual.text).to.match(/DELETE\s* FROM u_flood.sls_telemetry_value_parent/)
+      expect(actual.values).to.be.undefined()
+    })
+  })
+
+  describe('updateTelemetryHistory', () => {
+    it('returns the history update sql in a query object', () => {
+      // Act
+      const actual = updateTelemetryHistory()
+
+      // Assert
+      expect(actual.text).to.equal('SELECT u_flood.update_telemetry_history();')
       expect(actual.values).to.be.undefined()
     })
   })
