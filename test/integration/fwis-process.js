@@ -1,14 +1,12 @@
 'use strict'
-const Lab = require('@hapi/lab')
-const lab = exports.lab = Lab.script()
 const { LambdaClient, InvokeCommand } = require('@aws-sdk/client-lambda')
 
 const lambdaClient = new LambdaClient({
   region: process.env.LFW_DATA_TARGET_REGION
 })
 
-lab.experiment('Test fwisProcess lambda invoke', () => {
-  lab.test('fwisProcess invoke', async () => {
+describe('Test fwisProcess lambda invoke', () => {
+  it('fwisProcess invoke', async () => {
     const command = new InvokeCommand({
       FunctionName: `${process.env.LFW_DATA_TARGET_ENV_NAME}${process.env.LFW_DATA_SERVICE_CODE}-fwisProcess`
     })

@@ -1,5 +1,3 @@
-const { expect } = require('@hapi/code')
-const Lab = require('@hapi/lab')
 const {
   slsTelemetryValues, slsTelemetryStation, slsTelemetryValueParent, deleteOldTelemetry, refreshStationMviews,
   deleteStations, insertStations, upsertFfoiMax, deleteCurrentFwis, insertFloodWarnings, refreshFloodWarningsMview,
@@ -7,7 +5,6 @@ const {
 } = require('../../lib/constructed-queries')
 const insertStationFixture = require('../data/insert-station.json')
 const floodWarningFixture = require('../data/flood-warning.json')
-const { describe, it } = exports.lab = Lab.script()
 
 describe('constructedQueries', () => {
   describe('slsTelemetryValues', () => {
@@ -41,8 +38,8 @@ describe('constructedQueries', () => {
       const actual = slsTelemetryValues(values)
 
       // Assert
-      expect(actual.text).to.match(/insert into "sls_telemetry_value" \("error", "processed_value", "telemetry_value_parent_id", "value", "value_timestamp"\)/)
-      expect(JSON.stringify(actual.values)).to.equal(JSON.stringify([
+      expect(actual.text).toMatch(/insert into "sls_telemetry_value" \("error", "processed_value", "telemetry_value_parent_id", "value", "value_timestamp"\)/)
+      expect(JSON.stringify(actual.values)).toBe(JSON.stringify([
         false,
         4.45,
         12345,
@@ -71,8 +68,8 @@ describe('constructedQueries', () => {
       const actual = slsTelemetryStation(values)
 
       // Assert
-      expect(actual.text).to.match(/INSERT INTO u_flood.sls_telemetry_station/)
-      expect(actual.values).to.equal(values)
+      expect(actual.text).toMatch(/INSERT INTO u_flood.sls_telemetry_station/)
+      expect(actual.values).toBe(values)
     })
   })
 
@@ -85,8 +82,8 @@ describe('constructedQueries', () => {
       const actual = slsTelemetryValueParent(values)
 
       // Assert
-      expect(actual.text).to.match(/INSERT INTO sls_telemetry_value_parent/)
-      expect(actual.values).to.equal(values)
+      expect(actual.text).toMatch(/INSERT INTO sls_telemetry_value_parent/)
+      expect(actual.values).toBe(values)
     })
   })
 
@@ -96,8 +93,8 @@ describe('constructedQueries', () => {
       const actual = deleteOldTelemetry()
 
       // Assert
-      expect(actual.text).to.match(/DELETE\s* FROM u_flood.sls_telemetry_value_parent/)
-      expect(actual.values).to.be.undefined()
+      expect(actual.text).toMatch(/DELETE\s* FROM u_flood.sls_telemetry_value_parent/)
+      expect(actual.values).toBeUndefined()
     })
   })
 
@@ -108,9 +105,9 @@ describe('constructedQueries', () => {
 
       // Assert
       for (const line of actual.text.trim().split('\n')) {
-        expect(line.trim()).to.match(/^REFRESH MATERIALIZED VIEW CONCURRENTLY u_flood\..* WITH DATA;$/)
+        expect(line.trim()).toMatch(/^REFRESH MATERIALIZED VIEW CONCURRENTLY u_flood\..* WITH DATA;$/)
       }
-      expect(actual.values).to.be.undefined()
+      expect(actual.values).toBeUndefined()
     })
   })
 
@@ -120,8 +117,8 @@ describe('constructedQueries', () => {
       const actual = deleteStations()
 
       // Assert
-      expect(actual.text).to.match(/TRUNCATE table u_flood.telemetry_context/)
-      expect(actual.values).to.be.undefined()
+      expect(actual.text).toMatch(/TRUNCATE table u_flood.telemetry_context/)
+      expect(actual.values).toBeUndefined()
     })
   })
 
@@ -138,8 +135,8 @@ describe('constructedQueries', () => {
       const actual = insertStations(values)
 
       // Assert
-      expect(actual.text).to.match(/insert into "telemetry_context" \("actual_ngr", "agency_name", "area", "catchment", "comments", "d_comments", "d_date_highest_level", "d_date_por_max", "d_date_por_min", "d_highest_level", "d_percentile_5", "d_percentile_95", "d_period_of_record", "d_por_max_value", "d_por_min_value", "d_stage_datum", "date_highest_level", "date_open", "date_por_max", "date_por_min", "display_area", "display_catchment", "display_region", "external_name", "highest_level", "location_info", "percentile_5", "percentile_95", "period_of_record", "por_max_value", "por_min_value", "post_process", "region", "rloi_id", "site_max", "stage_datum", "station_type", "status", "status_date", "status_reason", "subtract", "telemetry_id", "wiski_id", "wiski_river_name", "x_coord_actual", "x_coord_display", "y_coord_actual", "y_coord_display"\)/)
-      expect(actual.values).to.have.length(Object.values(insertStationFixture).length * 3)
+      expect(actual.text).toMatch(/insert into "telemetry_context" \("actual_ngr", "agency_name", "area", "catchment", "comments", "d_comments", "d_date_highest_level", "d_date_por_max", "d_date_por_min", "d_highest_level", "d_percentile_5", "d_percentile_95", "d_period_of_record", "d_por_max_value", "d_por_min_value", "d_stage_datum", "date_highest_level", "date_open", "date_por_max", "date_por_min", "display_area", "display_catchment", "display_region", "external_name", "highest_level", "location_info", "percentile_5", "percentile_95", "period_of_record", "por_max_value", "por_min_value", "post_process", "region", "rloi_id", "site_max", "stage_datum", "station_type", "status", "status_date", "status_reason", "subtract", "telemetry_id", "wiski_id", "wiski_river_name", "x_coord_actual", "x_coord_display", "y_coord_actual", "y_coord_display"\)/)
+      expect(actual.values).toHaveLength(Object.values(insertStationFixture).length * 3)
     })
   })
 
@@ -152,8 +149,8 @@ describe('constructedQueries', () => {
       const actual = upsertFfoiMax(values)
 
       // Assert
-      expect(actual.text).to.match(/INSERT INTO u_flood.ffoi_max/)
-      expect(actual.values).to.equal(values)
+      expect(actual.text).toMatch(/INSERT INTO u_flood.ffoi_max/)
+      expect(actual.values).toBe(values)
     })
   })
 
@@ -163,8 +160,8 @@ describe('constructedQueries', () => {
       const actual = deleteCurrentFwis()
 
       // Assert
-      expect(actual.text).to.match(/DELETE\s* FROM u_flood.fwis/)
-      expect(actual.values).to.be.undefined()
+      expect(actual.text).toMatch(/DELETE\s* FROM u_flood.fwis/)
+      expect(actual.values).toBeUndefined()
     })
   })
 
@@ -182,8 +179,8 @@ describe('constructedQueries', () => {
       const actual = insertFloodWarnings(values)
 
       // Assert
-      expect(actual.text).to.match(/insert into "fwis" \("message_received", "owner_area", "quick_dial", "severity", "severity_changed", "severity_value", "situation", "situation_changed", "ta_category", "ta_code", "ta_created_date", "ta_d", "ta_description", "ta_modified_date", "ta_name", "ta_version"\)/)
-      expect(actual.values).to.have.length(Object.values(floodWarningFixture).length * 4)
+      expect(actual.text).toMatch(/insert into "fwis" \("message_received", "owner_area", "quick_dial", "severity", "severity_changed", "severity_value", "situation", "situation_changed", "ta_category", "ta_code", "ta_created_date", "ta_d", "ta_description", "ta_modified_date", "ta_name", "ta_version"\)/)
+      expect(actual.values).toHaveLength(Object.values(floodWarningFixture).length * 4)
     })
   })
 
@@ -193,8 +190,8 @@ describe('constructedQueries', () => {
       const actual = refreshFloodWarningsMview()
 
       // Assert
-      expect(actual.text).to.match(/REFRESH MATERIALIZED VIEW u_flood.fwa_mview/)
-      expect(actual.values).to.be.undefined()
+      expect(actual.text).toMatch(/REFRESH MATERIALIZED VIEW u_flood.fwa_mview/)
+      expect(actual.values).toBeUndefined()
     })
   })
 
@@ -207,8 +204,8 @@ describe('constructedQueries', () => {
       const actual = updateTimestamp(values)
 
       // Assert
-      expect(actual.text).to.match(/UPDATE u_flood.current_load_timestamp/)
-      expect(actual.values).to.equal(values)
+      expect(actual.text).toMatch(/UPDATE u_flood.current_load_timestamp/)
+      expect(actual.values).toBe(values)
     })
   })
 })

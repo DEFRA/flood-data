@@ -12,7 +12,7 @@ jspm_packages
 test/output*
 test/*.html
 lcov.info
-coverage/lcov.info
+coverage/
 
 #configuration file
 config/config.js

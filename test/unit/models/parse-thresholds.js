@@ -1,6 +1,3 @@
-const { expect } = require('@hapi/code')
-const Lab = require('@hapi/lab')
-const { experiment, test } = (exports.lab = Lab.script())
 const response = require('./data/imfs-simple-response.json')
 const flowResponse = require('./data/imfs-flow-response.json')
 const parseThresholds = require('../../../lib/models/parse-thresholds')
@@ -9,12 +6,12 @@ function clone (doc) {
   return JSON.parse(JSON.stringify(doc))
 }
 
-experiment('parseThresholds tests', () => {
-  test('should parse thresholds from simple IMTD response', () => {
+describe('parseThresholds tests', () => {
+  it('should parse thresholds from simple IMTD response', () => {
     const thresholds = parseThresholds(response[0].TimeSeriesMetaData)
-    expect(thresholds).to.be.an.array()
-    expect(thresholds.length).to.equal(3)
-    expect(thresholds).to.equal([
+    expect(thresholds).toBeArray()
+    expect(thresholds.length).toBe(3)
+    expect(thresholds).toEqual([
       {
         floodWarningArea: '033WAF309',
         floodWarningType: 'A',
@@ -38,12 +35,12 @@ experiment('parseThresholds tests', () => {
       }
     ])
   })
-  test('should parse thresholds from flow response', () => {
+  it('should parse thresholds from flow response', () => {
     const thresholds = parseThresholds(flowResponse[0].TimeSeriesMetaData)
-    expect(thresholds).to.be.an.array()
-    expect(thresholds.length).to.equal(16)
+    expect(thresholds).toBeArray()
+    expect(thresholds.length).toBe(16)
     // use the map to make the test more concise, consider whether this is better approach than in than test above
-    expect(thresholds.map(t => `2116,${t.floodWarningArea},${t.floodWarningType},${t.direction},${t.level}`)).to.equal([
+    expect(thresholds.map(t => `2116,${t.floodWarningArea},${t.floodWarningType},${t.direction},${t.level}`)).toEqual([
       '2116,034WAF414,A,u,1.7',
       '2116,034WAF415,A,u,2.4',
       '2116,034WAF414,A,u,2.6',
@@ -63,25 +60,25 @@ experiment('parseThresholds tests', () => {
     ])
   })
 
-  test('should parse thresholds where there are no thresholds returned', () => {
+  it('should parse thresholds where there are no thresholds returned', () => {
     const responseCopy = clone(response)
     responseCopy[0].TimeSeriesMetaData[0].Thresholds = []
     const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
-    expect(thresholds).to.be.an.array()
-    expect(thresholds.length).to.equal(0)
+    expect(thresholds).toBeArray()
+    expect(thresholds.length).toBe(0)
   })
-  test('should parse thresholds where the response has an empty TimeSeriesMetaData', () => {
+  it('should parse thresholds where the response has an empty TimeSeriesMetaData', () => {
     const responseCopy = clone(response)
     responseCopy[0].TimeSeriesMetaData = []
     const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
-    expect(thresholds).to.be.an.array()
-    expect(thresholds.length).to.equal(0)
+    expect(thresholds).toBeArray()
+    expect(thresholds.length).toBe(0)
   })
-  test('should parse thresholds where the response has no TimeSeriesMetaData', () => {
+  it('should parse thresholds where the response has no TimeSeriesMetaData', () => {
     const responseCopy = clone(response)
     delete responseCopy[0].TimeSeriesMetaData
     const thresholds = parseThresholds(responseCopy[0].TimeSeriesMetaData)
-    expect(thresholds).to.be.an.array()
-    expect(thresholds.length).to.equal(0)
+    expect(thresholds).toBeArray()
+    expect(thresholds.length).toBe(0)
   })
 })

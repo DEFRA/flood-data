@@ -1,8 +1,5 @@
 'use strict'
 
-const Lab = require('@hapi/lab')
-const lab = exports.lab = Lab.script()
-const Code = require('@hapi/code')
 const handler = require('../../../lib/functions/ffoi-process').handler
 const event = require('../../events/ffoi-event.json')
 
@@ -11,52 +8,35 @@ const util = require('../../../lib/helpers/util')
 const ffoi = require('../../../lib/models/ffoi')
 const { Client } = require('pg')
 
-// start up Sinon sandbox
-const sinon = require('sinon').createSandbox()
-
-lab.experiment('FFOI processing', () => {
+describe('FFOI processing', () => {
   let mockResponse
 
-  lab.beforeEach(async () => {
+  beforeEach(async () => {
     // setup mocks
     mockResponse = {
       Body: {
-        transformToString: sinon.stub()
+        transformToString: jest.fn()
       }
     }
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve(mockResponse)
-    })
-    sinon.stub(util, 'parseXml').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'connect').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'query').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'end').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(ffoi, 'save').callsFake(() => {
-      return Promise.resolve({})
-    })
+    jest.spyOn(s3, 'getObject').mockResolvedValue(mockResponse)
+    jest.spyOn(util, 'parseXml').mockResolvedValue({})
+
+    jest.spyOn(Client.prototype, 'connect').mockResolvedValue({})
+    jest.spyOn(Client.prototype, 'query').mockResolvedValue({})
+    jest.spyOn(Client.prototype, 'end').mockResolvedValue({})
+    jest.spyOn(ffoi, 'save').mockResolvedValue({})
   })
-  lab.afterEach(() => {
-    // restore sinon sandbox
-    sinon.restore()
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
-  lab.test('ffoi process', async () => {
-    mockResponse.Body.transformToString.resolves('<xml></xml>')
+  it('ffoi process', async () => {
+    mockResponse.Body.transformToString.mockResolvedValue('<xml></xml>')
     await handler(event)
   })
 
-  lab.test('ffoi process S3 error', async () => {
-    s3.getObject = () => {
-      return Promise.reject(new Error('test error'))
-    }
-    await Code.expect(handler(event)).to.reject()
+  it('ffoi process S3 error', async () => {
+    jest.spyOn(s3, 'getObject').mockRejectedValue(new Error('test error'))
+    await expect(handler(event)).rejects.toThrow('test error')
   })
 })

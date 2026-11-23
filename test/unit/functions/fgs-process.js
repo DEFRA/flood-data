@@ -1,99 +1,75 @@
-const Lab = require('@hapi/lab')
-const lab = exports.lab = Lab.script()
-const Code = require('@hapi/code')
 const handler = require('../../../lib/functions/fgs-process').handler
 const s3 = require('../../../lib/helpers/s3')
 const wreck = require('../../../lib/helpers/wreck')
 
-// start up Sinon sandbox
-const sinon = require('sinon').createSandbox()
-
-lab.experiment('fgs process', () => {
-  lab.beforeEach(async () => {
-
-  })
-
-  lab.afterEach(() => {
-    sinon.restore()
-  })
-
-  lab.test('fgs process', async () => {
+describe('fgs process', () => {
+  it('fgs process', async () => {
     process.env.LFW_DATA_FGS_KEY = 'test-key'
 
-    const putObject = sinon.stub(s3, 'putObject').callsFake((params) => {
-      Code.expect(params.Body).to.equal(JSON.stringify({ id: 'test' }))
-      Code.expect(params.Key).to.include('fgs/').and.to.include('.json')
+    const putObject = jest.spyOn(s3, 'putObject').mockImplementation((params) => {
+      expect(params.Body).toEqual(JSON.stringify({ id: 'test' }))
+      expect(params.Key).toInclude('fgs/')
+      expect(params.Key).toInclude('.json')
       return Promise.resolve({})
     })
-    const request = sinon.stub(wreck, 'request').callsFake(() => {
-      return Promise.resolve({
-        statement:
-        {
-          id: 'test'
-        }
-      })
+    const request = jest.spyOn(wreck, 'request').mockResolvedValue({
+      statement: { id: 'test' }
     })
 
     await handler()
-    sinon.assert.calledTwice(putObject)
-    sinon.assert.calledOnce(request)
+    expect(putObject).toHaveBeenCalledTimes(2)
+    expect(request).toHaveBeenCalledTimes(1)
 
     // Verify request was called with correct URL
-    Code.expect(request.getCall(0).args[1]).to.include('v3/statements/latest')
+    expect(request.mock.calls[0][1]).toInclude('v3/statements/latest')
 
     delete process.env.LFW_DATA_FGS_KEY
   })
 
-  lab.test('fgs process sends x-api-key header', async () => {
+  it('fgs process sends x-api-key header', async () => {
     process.env.LFW_DATA_FGS_KEY = 'test-api-key-123'
 
-    sinon.stub(s3, 'putObject').resolves({})
-    const request = sinon.stub(wreck, 'request').resolves({
+    jest.spyOn(s3, 'putObject').mockResolvedValue({})
+    const request = jest.spyOn(wreck, 'request').mockResolvedValue({
       statement: { id: 'test' }
     })
 
     await handler()
 
-    sinon.assert.calledOnce(request)
-    const callArgs = request.getCall(0).args
-    Code.expect(callArgs[0]).to.equal('get')
-    Code.expect(callArgs[1]).to.include('statements/latest')
-    Code.expect(callArgs[2].headers).to.exist()
-    Code.expect(callArgs[2].headers['x-api-key']).to.equal('test-api-key-123')
-    Code.expect(callArgs[2].json).to.be.true()
-    Code.expect(callArgs[2].timeout).to.equal(30000)
+    expect(request).toHaveBeenCalledTimes(1)
+    const callArgs = request.mock.calls[0]
+    expect(callArgs[0]).toEqual('get')
+    expect(callArgs[1]).toInclude('statements/latest')
+    expect(callArgs[2].headers).toBeDefined()
+    expect(callArgs[2].headers['x-api-key']).toEqual('test-api-key-123')
+    expect(callArgs[2].json).toBe(true)
+    expect(callArgs[2].timeout).toEqual(30000)
 
     delete process.env.LFW_DATA_FGS_KEY
   })
 
-  lab.test('fgs process when LFW_DATA_FGS_KEY is not set', async () => {
+  it('fgs process when LFW_DATA_FGS_KEY is not set', async () => {
     delete process.env.LFW_DATA_FGS_KEY
 
-    sinon.stub(s3, 'putObject').resolves({})
-    const request = sinon.stub(wreck, 'request').resolves({
+    jest.spyOn(s3, 'putObject').mockResolvedValue({})
+    const request = jest.spyOn(wreck, 'request').mockResolvedValue({
       statement: { id: 'test' }
     })
 
     await handler()
 
-    const callArgs = request.getCall(0).args
-    Code.expect(callArgs[2].headers['x-api-key']).to.be.undefined()
+    const callArgs = request.mock.calls[0]
+    expect(callArgs[2].headers['x-api-key']).toBeUndefined()
   })
 
-  lab.test('s3 error', async () => {
-    sinon.stub(s3, 'putObject').callsFake(() => {
-      return Promise.reject(new Error('test error'))
-    })
-    sinon.stub(wreck, 'request').callsFake(() => {
-      return Promise.reject(new Error('test error'))
-    })
-    await Code.expect(handler()).to.reject()
+  it('s3 error', async () => {
+    jest.spyOn(s3, 'putObject').mockRejectedValue(new Error('test error'))
+    jest.spyOn(wreck, 'request').mockRejectedValue(new Error('test error'))
+    await expect(handler()).rejects.toThrow('test error')
   })
 
-  lab.test('request error', async () => {
-    sinon.stub(wreck, 'request').callsFake(() => {
-      return Promise.resolve(null)
-    })
-    await Code.expect(handler()).to.reject()
+  it('request error', async () => {
+    jest.spyOn(wreck, 'request').mockResolvedValue(null)
+    await expect(handler()).rejects.toThrow()
   })
 })

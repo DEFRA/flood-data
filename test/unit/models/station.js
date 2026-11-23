@@ -1,6 +1,3 @@
-const Lab = require('@hapi/lab')
-const lab = exports.lab = Lab.script()
-const Code = require('@hapi/code')
 const fs = require('fs')
 
 const util = require('../../../lib/helpers/util')
@@ -8,41 +5,30 @@ const station = require('../../../lib/models/station')
 const s3 = require('../../../lib/helpers/s3')
 const { Client } = require('pg')
 
-// start up Sinon sandbox
-const sinon = require('sinon').createSandbox()
-
-lab.experiment('station model', () => {
-  lab.beforeEach(() => {
+describe('station model', () => {
+  beforeEach(() => {
     // setup mocks
-    sinon.stub(s3, 'putObject').callsFake(() => {
-      return Promise.resolve({ ETag: '"47f693afd590c0b546bc052f6cfb4b71"' })
-    })
-    sinon.stub(Client.prototype, 'connect').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'query').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'end').callsFake(() => {
-      return Promise.resolve({})
-    })
+    jest.spyOn(s3, 'putObject').mockResolvedValue({ ETag: '"47f693afd590c0b546bc052f6cfb4b71"' })
+    jest.spyOn(Client.prototype, 'connect').mockResolvedValue({})
+    jest.spyOn(Client.prototype, 'query').mockResolvedValue({})
+    jest.spyOn(Client.prototype, 'end').mockResolvedValue({})
   })
-  lab.afterEach(() => {
-    sinon.restore()
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
 
-  lab.test('Station save to database', async () => {
+  it('Station save to database', async () => {
     const stations = await util.parseCsv(fs.readFileSync('./test/data/rloiStationData.csv').toString())
     const client = new Client()
     await station.saveToDb(stations, client)
   })
 
-  lab.test('Station save to object', async () => {
+  it('Station save to object', async () => {
     const stations = await util.parseCsv(fs.readFileSync('./test/data/rloiStationData.csv').toString())
     await station.saveToObjects(stations, 'test', s3)
   })
 
-  lab.test('production console log', async () => {
+  it('production console log', async () => {
     const stage = process.env.stage
     process.env.stage = 'ea'
     const stations = await util.parseCsv(fs.readFileSync('./test/data/rloiStationData.csv').toString())
@@ -50,9 +36,10 @@ lab.experiment('station model', () => {
     process.env.stage = stage
   })
 
-  lab.test('s3 putobject error', async () => {
-    s3.putObject.restore()
-    sinon.stub(s3, 'putObject').callsFake((params) => {
+  it('s3 putobject error', async () => {
+    jest.restoreAllMocks()
+    jest.spyOn(console, 'error').mockImplementation(() => { })
+    jest.spyOn(s3, 'putObject').mockImplementation((params) => {
       return new Promise((resolve, reject) => {
         if (params.Key.indexOf('stations.json') > -1) {
           return resolve({ ETag: '"47f693afd590c0b546bc052f6cfb4b71"' })
@@ -66,13 +53,13 @@ lab.experiment('station model', () => {
     await station.saveToObjects(stations, 'test', s3)
   })
 
-  lab.test('db error', async () => {
-    Client.prototype.query.restore()
-    sinon.stub(Client.prototype, 'query').callsFake((query) => {
+  it('db error', async () => {
+    jest.restoreAllMocks()
+    jest.spyOn(Client.prototype, 'query').mockImplementation((query) => {
       return Promise.reject(new Error('test error'))
     })
     const stations = await util.parseCsv(fs.readFileSync('./test/data/rloiStationData.csv').toString())
     const client = new Client()
-    await Code.expect(station.saveToDb(stations, client)).to.reject()
+    await expect(station.saveToDb(stations, client)).rejects.toThrow()
   })
 })
