@@ -1,6 +1,3 @@
-const Lab = require('@hapi/lab')
-const lab = exports.lab = Lab.script()
-const Code = require('@hapi/code')
 const handler = require('../../../lib/functions/station-process').handler
 const event = require('../../events/station-event.json')
 const s3 = require('../../../lib/helpers/s3')
@@ -8,55 +5,38 @@ const util = require('../../../lib/helpers/util')
 const station = require('../../../lib/models/station')
 const { Client } = require('pg')
 
-// start up Sinon sandbox
-const sinon = require('sinon').createSandbox()
-
-lab.experiment('station processing', () => {
+describe('station processing', () => {
   let mockResponse
 
-  lab.beforeEach(() => {
+  beforeEach(() => {
     // setup mocks
     mockResponse = {
       Body: {
-        transformToString: sinon.stub()
+        transformToString: jest.fn()
       }
     }
 
-    sinon.stub(s3, 'getObject').callsFake(() => {
-      return Promise.resolve(mockResponse)
-    })
-    sinon.stub(util, 'parseCsv').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(station, 'saveToDb').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(station, 'saveToObjects').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'connect').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'query').callsFake(() => {
-      return Promise.resolve({})
-    })
-    sinon.stub(Client.prototype, 'end').callsFake(() => {
-      return Promise.resolve({})
-    })
+    jest.spyOn(s3, 'getObject').mockResolvedValue(mockResponse)
+    jest.spyOn(util, 'parseCsv').mockResolvedValue({})
+    jest.spyOn(station, 'saveToDb').mockResolvedValue({})
+    jest.spyOn(station, 'saveToObjects').mockResolvedValue({})
+    jest.spyOn(Client.prototype, 'connect').mockResolvedValue({})
+    jest.spyOn(Client.prototype, 'query').mockResolvedValue({})
+    jest.spyOn(Client.prototype, 'end').mockResolvedValue({})
   })
-  lab.afterEach(() => {
-    // restore sinon sandbox
-    sinon.restore()
+  afterEach(() => {
+    jest.restoreAllMocks()
   })
-  lab.test('station process', async () => {
-    mockResponse.Body.transformToString.resolves('test')
+
+  it('station process', async () => {
+    mockResponse.Body.transformToString.mockResolvedValue('test')
     await handler(event)
   })
 
-  lab.test('station process S3 error', async () => {
+  it('station process S3 error', async () => {
     s3.getObject = () => {
       return Promise.reject(new Error('test error'))
     }
-    await Code.expect(handler(event)).to.reject()
+    await expect(handler(event)).rejects.toThrow()
   })
 })

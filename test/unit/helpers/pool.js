@@ -1,9 +1,3 @@
-const sinon = require('sinon')
-const { expect } = require('@hapi/code')
-const Lab = require('@hapi/lab')
-const { afterEach, beforeEach, describe, it } = exports.lab = Lab.script()
-const proxyquire = require('proxyquire')
-
 const mockConstructedQueries = {
   exampleQuery: (values) => {
     return {
@@ -19,21 +13,23 @@ describe('DatabasePool', () => {
 
   beforeEach(() => {
     clientStub = {
-      query: sinon.stub().resolves({ /* mocked query result */ }),
-      release: sinon.stub().resolves()
+      query: jest.fn().mockResolvedValue({ /* mocked query result */ }),
+      release: jest.fn().mockResolvedValue()
     }
     poolStub = {
-      connect: sinon.stub().resolves(clientStub),
-      end: sinon.stub().resolves()
+      connect: jest.fn().mockResolvedValue(clientStub),
+      end: jest.fn().mockResolvedValue()
     }
-    Pool = proxyquire('../../../lib/helpers/pool', {
-      pg: { Pool: sinon.stub().returns(poolStub) },
-      '../constructed-queries': mockConstructedQueries
-    }).Pool
+    jest.resetModules()
+    jest.doMock('pg', () => ({ Pool: jest.fn(() => poolStub) }))
+    jest.doMock('../../../lib/constructed-queries', () => mockConstructedQueries)
+    Pool = require('../../../lib/helpers/pool').Pool
   })
 
   afterEach(() => {
-    sinon.restore()
+    jest.restoreAllMocks()
+    jest.dontMock('pg')
+    jest.dontMock('../../../lib/constructed-queries')
   })
 
   describe('query', () => {
@@ -49,14 +45,21 @@ describe('DatabasePool', () => {
       await pool.query(queryName, values)
 
       // Assert
-      expect(poolStub.connect.calledOnce).to.be.true()
-      expect(clientStub.query.lastCall.args).to.equal([{
+      expect(poolStub.connect).toHaveBeenCalledTimes(1)
+      expect(clientStub.query).toHaveBeenLastCalledWith({
         text: 'INSERT into "some_table" ("a", "b", "c") values ($1, $2, $3)',
         values: [
           1, 2, 'test'
         ]
-      }])
-      expect(clientStub.release.calledOnce).to.be.true()
+      })
+      expect(clientStub.release).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not try to release when no client could be obtained', async () => {
+      poolStub.connect.mockResolvedValue(undefined)
+      const pool = new Pool()
+      await expect(pool.query('exampleQuery', [1, 2, 'test'])).rejects.toThrow('Error querying DB')
+      expect(clientStub.release).not.toHaveBeenCalled()
     })
 
     it('should throw an error if asked to execute an unknown query', async () => {
@@ -76,10 +79,10 @@ describe('DatabasePool', () => {
       }
 
       // Assert
-      expect(poolStub.connect.calledOnce).to.be.false()
-      expect(clientStub.query.called).to.be.false()
-      expect(error).to.be.instanceof(Error)
-      expect(error.message).to.equal('Query not found \'unknownQuery\'')
+      expect(poolStub.connect).not.toHaveBeenCalled()
+      expect(clientStub.query).not.toHaveBeenCalled()
+      expect(error).toBeInstanceOf(Error)
+      expect(error.message).toEqual('Query not found \'unknownQuery\'')
     })
   })
   describe('end', () => {
@@ -91,17 +94,18 @@ describe('DatabasePool', () => {
       await pool.end()
 
       // Assert
-      expect(poolStub.end.calledOnce).to.be.true()
+      expect(poolStub.end).toHaveBeenCalledTimes(1)
     })
 
     it('should throw an error if ending the pool fails', async () => {
       // Arrange
       const pool = new Pool()
-      poolStub.end.rejects(new Error('Failed to end pool'))
+      jest.spyOn(console, 'error').mockImplementation(() => {})
+      poolStub.end.mockRejectedValue(new Error('Failed to end pool'))
 
       // Act & Assert
-      await expect(pool.end()).to.reject()
-      expect(poolStub.end.calledOnce).to.be.true()
+      await expect(pool.end()).rejects.toThrow('Failed to end pool')
+      expect(poolStub.end).toHaveBeenCalledTimes(1)
     })
   })
 })
