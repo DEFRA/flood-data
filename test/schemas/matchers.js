@@ -1,32 +1,32 @@
-const sinon = require('sinon')
 const rloiValueParentSchema = require('./rloi-value-parent')
 const rloiValuesSchema = require('./rloi-values')
 const stationSchema = require('./station')
 
-const valueParentSchemaQueryMatcher = sinon.match((matchValue) => {
-  return rloiValueParentSchema.queryName.validate(matchValue).error === undefined
-}, 'parent query does not match expected schema')
+// Jest asymmetric matcher: usable inside toHaveBeenCalledWith / toEqual etc.
+const schemaMatcher = (schema, description) => {
+  const test = (value) => schema.validate(value).error === undefined
+  return {
+    $$typeof: Symbol.for('jest.asymmetricMatcher'),
+    asymmetricMatch: test,
+    test,
+    toString: () => description,
+    toAsymmetricMatcher: () => description,
+    getExpectedType: () => 'any'
+  }
+}
 
-const valueParentSchemaVarsMatcher = sinon.match((matchValue) => {
-  return rloiValueParentSchema.vars.validate(matchValue).error === undefined
-}, 'parent vars does not match expected schema')
+const valueParentSchemaQueryMatcher = schemaMatcher(rloiValueParentSchema.queryName, 'parent query does not match expected schema')
 
-const valuesSchemaQueryMatcher = sinon.match((matchValue) => {
-  return rloiValuesSchema.queryName.validate(matchValue).error === undefined
-}, 'Values query does not match expected schema')
+const valueParentSchemaVarsMatcher = schemaMatcher(rloiValueParentSchema.vars, 'parent vars does not match expected schema')
+
+const valuesSchemaQueryMatcher = schemaMatcher(rloiValuesSchema.queryName, 'Values query does not match expected schema')
 
 // TODO: add tests for this matcher
-const valuesSchemaVarsMatcher = sinon.match((matchValue) => {
-  return rloiValuesSchema.vars.validate(matchValue).error === undefined
-}, 'Values vars does not match expected schema')
+const valuesSchemaVarsMatcher = schemaMatcher(rloiValuesSchema.vars, 'Values vars does not match expected schema')
 
-const stationSchemaQueryMatcher = sinon.match((matchValue) => {
-  return stationSchema.queryName.validate(matchValue).error === undefined
-}, 'station query does not match expected schema')
+const stationSchemaQueryMatcher = schemaMatcher(stationSchema.queryName, 'station query does not match expected schema')
 
-const stationSchemaVarsMatcher = sinon.match((matchValue) => {
-  return stationSchema.vars.validate(matchValue).error === undefined
-}, 'station vars does not match expected schema')
+const stationSchemaVarsMatcher = schemaMatcher(stationSchema.vars, 'station vars does not match expected schema')
 
 module.exports = {
   valueParentSchemaQueryMatcher,

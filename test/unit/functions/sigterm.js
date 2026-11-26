@@ -1,0 +1,18 @@
+describe.each(['dts-process', 'imtd-process'])('%s SIGTERM handler', (name) => {
+  it('destroys the DB connection and exits', async () => {
+    jest.resetModules()
+    const destroy = jest.fn().mockResolvedValue()
+    jest.doMock('../../../lib/helpers/db', () => ({ destroy }))
+    jest.spyOn(console, 'log').mockImplementation(() => {})
+    const exit = jest.spyOn(process, 'exit').mockImplementation(() => {})
+    const onSpy = jest.spyOn(process, 'on')
+    require(`../../../lib/functions/${name}`)
+    const call = onSpy.mock.calls.find(([event]) => event === 'SIGTERM')
+    await call[1]()
+    expect(destroy).toHaveBeenCalled()
+    expect(exit).toHaveBeenCalledWith(0)
+    onSpy.mockRestore()
+    process.removeAllListeners('SIGTERM')
+    jest.dontMock('../../../lib/helpers/db')
+  })
+})

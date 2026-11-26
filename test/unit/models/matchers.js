@@ -4,24 +4,21 @@ const {
   valueParentSchemaQueryMatcher,
   valueParentSchemaVarsMatcher
 } = require('../../schemas/matchers')
-const Lab = require('@hapi/lab')
-const lab = exports.lab = Lab.script()
-const Code = require('@hapi/code')
 
-lab.experiment('matchers', () => {
+describe('matchers', () => {
   // Note: these tests are testing code used in the rloi.js unit tests to match and assert on args
   // passed to db.query()
-  lab.test('valueParentSchemaQueryMatcher should match', async () => {
+  it('valueParentSchemaQueryMatcher should match', async () => {
     const queryName = 'slsTelemetryValueParent'
-    Code.expect(valueParentSchemaQueryMatcher.test(queryName)).to.be.true()
+    expect(valueParentSchemaQueryMatcher.test(queryName)).toBe(true)
   })
 
-  lab.test('valueParentSchemaQueryMatcher should not match', async () => {
+  it('valueParentSchemaQueryMatcher should not match', async () => {
     const queryName = 'blah'
-    Code.expect(valueParentSchemaQueryMatcher.test(queryName)).to.be.false()
+    expect(valueParentSchemaQueryMatcher.test(queryName)).toBe(false)
   })
 
-  lab.test('valueParentSchemaVarMatcher', async () => {
+  it('valueParentSchemaVarMatcher', async () => {
     const vars = [
       'testkey',
       'Tue Sep 15 2020 08:37:13 GMT+0100 (British Summer Time)',
@@ -39,14 +36,14 @@ lab.experiment('matchers', () => {
       'S',
       1.6
     ]
-    Code.expect(valueParentSchemaVarsMatcher.test(vars)).to.be.true()
+    expect(valueParentSchemaVarsMatcher.test(vars)).toBe(true)
   })
 
-  lab.test('valueParentSchemaVarMatcher', async () => {
-    Code.expect(valueParentSchemaVarsMatcher.test(undefined)).to.be.false()
+  it('valueParentSchemaVarMatcher', async () => {
+    expect(valueParentSchemaVarsMatcher.test(undefined)).toBe(false)
   })
 
-  lab.test('insert values into sls_telemetry_value should match', async () => {
+  it('insert values into sls_telemetry_value should match', async () => {
     const values = [
       {
         telemetry_value_parent_id: 1,
@@ -56,21 +53,21 @@ lab.experiment('matchers', () => {
         error: false
       }
     ]
-    Code.expect(valuesSchemaVarsMatcher.test(values)).to.be.true()
+    expect(valuesSchemaVarsMatcher.test(values)).toBe(true)
   })
 
-  lab.test('insert into sls_telemetry_value should match', async () => {
+  it('insert into sls_telemetry_value should match', async () => {
     const queryName = 'slsTelemetryValues'
-    Code.expect(valuesSchemaQueryMatcher.test(queryName)).to.be.true()
+    expect(valuesSchemaQueryMatcher.test(queryName)).toBe(true)
   })
 
-  lab.test('insert into sls_telemetry_value_parent should not match', async () => {
+  it('insert into sls_telemetry_value_parent should not match', async () => {
     const query = 'blah'
-    Code.expect(valuesSchemaQueryMatcher.test(query)).to.be.false()
+    expect(valuesSchemaQueryMatcher.test(query)).toBe(false)
   })
 
-  lab.test('empty query object should not match', async () => {
+  it('empty query object should not match', async () => {
     const query = {}
-    Code.expect(valuesSchemaQueryMatcher.test(query)).to.be.false()
+    expect(valuesSchemaQueryMatcher.test(query)).toBe(false)
   })
 })
